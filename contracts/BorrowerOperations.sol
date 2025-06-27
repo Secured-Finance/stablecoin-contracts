@@ -36,6 +36,9 @@ contract BorrowerOperations is
     // A doubly linked list of Troves, sorted by their collateral ratios
     ISortedTroves public sortedTroves;
 
+    // Track the last block number when action is performed on a trove
+    mapping(address => uint256) public lastTroveActionBlock;
+
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
@@ -162,6 +165,9 @@ contract BorrowerOperations is
         address _upperHint,
         address _lowerHint
     ) external payable override nonReentrant {
+        _requireTroveActionNotInLatestBlock(msg.sender);
+        lastTroveActionBlock[msg.sender] = block.number;
+
         _requireAmountGreaterThanZero(_debtTokenAmount);
 
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, debtToken);
@@ -337,6 +343,9 @@ contract BorrowerOperations is
         address _lowerHint,
         uint _maxFeePercentage
     ) internal {
+        _requireTroveActionNotInLatestBlock(_borrower);
+        lastTroveActionBlock[_borrower] = block.number;
+
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, debtToken);
         LocalVariables_adjustTrove memory vars;
 
@@ -454,6 +463,9 @@ contract BorrowerOperations is
     }
 
     function closeTrove() external override nonReentrant {
+        _requireTroveActionNotInLatestBlock(msg.sender);
+        lastTroveActionBlock[msg.sender] = block.number;
+
         ITroveManager troveManagerCached = troveManager;
         IActivePool activePoolCached = activePool;
         IDebtToken debtTokenCached = debtToken;
@@ -774,6 +786,13 @@ contract BorrowerOperations is
                 "Max fee percentage must be between 0.5% and 100%"
             );
         }
+    }
+
+    function _requireTroveActionNotInLatestBlock(address _borrower) internal view {
+        require(
+            lastTroveActionBlock[_borrower] != block.number,
+            "BorrowerOps: Trove action already performed in the latest block"
+        );
     }
 
     // --- ICR and TCR getters ---
