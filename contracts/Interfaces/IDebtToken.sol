@@ -4,8 +4,9 @@ pragma solidity 0.7.6;
 
 import "../Dependencies/OpenZeppelin/interfaces/IERC2612.sol";
 import "../Dependencies/OpenZeppelin/token/ERC20/extensions/IERC20Metadata.sol";
+import "./IERC3009.sol";
 
-interface IDebtToken is IERC20Metadata, IERC2612 {
+interface IDebtToken is IERC20Metadata, IERC2612, IERC3009 {
     // --- Events ---
 
     event TroveManagerAddressChanged(address _troveManagerAddress);
