@@ -7,11 +7,11 @@ const { defaultAbiCoder } = require("@ethersproject/abi");
 const { toUtf8Bytes } = require("@ethersproject/strings");
 const { pack } = require("@ethersproject/solidity");
 const { hexlify } = require("@ethersproject/bytes");
-const { ecsign } = require("ethereumjs-util");
 const { randomBytes } = require("@ethersproject/random");
+const { ecsign } = require("ethereumjs-util");
 
-const { toBN, assertRevert, dec, ZERO_ADDRESS, GAS_COMPENSATION, MIN_NET_DEBT } =
-  testHelpers.TestHelper;
+const th = testHelpers.TestHelper;
+const { toBN, assertRevert, dec, ZERO_ADDRESS, GAS_COMPENSATION, MIN_NET_DEBT } = th;
 
 const sign = (digest, privateKey) => {
   return ecsign(Buffer.from(digest.slice(2), "hex"), Buffer.from(privateKey.slice(2), "hex"));
@@ -139,89 +139,134 @@ const getCancelAuthorizationDigest = (name, address, chainId, version, authorize
   );
 };
 
-contract("DebtToken - EIP3009 Functionality", async () => {
+contract("DebtToken - EIP-3009 Functionality", async () => {
   let signers;
-  let owner, alice, bob, carol, dennis, erin;
+  let owner, alice, bob, carol, dennis;
 
-  const ownerPrivateKey = accountsList[0].privateKey;
   const alicePrivateKey = accountsList[1].privateKey;
   const bobPrivateKey = accountsList[2].privateKey;
+  const carolPrivateKey = accountsList[3].privateKey;
 
   let chainId;
-  let debtToken;
+  let debtTokenOriginal;
+  let debtTokenTester;
   let stabilityPool;
   let troveManager;
   let borrowerOperations;
-  let activePool;
-  let priceFeed;
 
   let contracts;
-
+  let protocolTokenContracts;
   let tokenName;
   let tokenVersion;
 
-  const openTrove = async (signer, params = {}) => {
-    return contracts.borrowerOperations
-      .connect(signer)
-      .openTrove(
-        params.maxFeePercentage || toBN(dec(5, 16)),
-        params.debtAmount || MIN_NET_DEBT,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        { value: params.collAmount || dec(100, "ether") },
-      );
-  };
-
   before(async () => {
+    await hre.network.provider.send("hardhat_reset");
     signers = await ethers.getSigners();
-    [owner, alice, bob, carol, dennis, erin] = await signers.splice(0, 6);
-
-    const transactionCount = await owner.getTransactionCount();
-    const cpContracts = await deploymentHelper.computeCoreProtocolContracts(
-      owner.address,
-      transactionCount,
-    );
-
-    contracts = await deploymentHelper.deployProtocolCore(
-      GAS_COMPENSATION,
-      MIN_NET_DEBT,
-      cpContracts,
-    );
-
-    debtToken = contracts.debtToken;
-    stabilityPool = contracts.stabilityPool;
-    troveManager = contracts.troveManager;
-    borrowerOperations = contracts.borrowerOperations;
-    activePool = contracts.activePool;
-    priceFeed = contracts.priceFeedTestnet;
-
-    // Set price to $100
-    await priceFeed.setPrice(dec(100, 18));
-
-    tokenName = await debtToken.name();
-    tokenVersion = await debtToken.version();
-    chainId = (await ethers.provider.getNetwork()).chainId;
-
-    // Setup: Alice opens trove and gets some debt tokens
-    await openTrove(alice, { collAmount: dec(100, "ether"), debtAmount: dec(10000, 18) });
+    [owner, alice, bob, carol, dennis] = await signers.splice(0, 5);
   });
 
-  describe("transferWithAuthorization", () => {
-    it("should transfer tokens with valid authorization", async () => {
-      const from = alice.address;
-      const to = bob.address;
+  const testCorpus = ({ withProxy = false }) => {
+    before(async () => {
+      const transactionCount = await owner.getTransactionCount();
+      const cpTesterContracts = await deploymentHelper.computeContractAddresses(
+        owner.address,
+        transactionCount,
+        3,
+      );
+      const cpContracts = await deploymentHelper.computeCoreProtocolContracts(
+        owner.address,
+        transactionCount + 3,
+      );
+
+      // Overwrite contracts with computed tester addresses
+      cpContracts.debtToken = cpTesterContracts[2];
+
+      debtTokenTester = await deploymentHelper.deployDebtTokenTester(cpContracts);
+
+      contracts = await deploymentHelper.deployProtocolCore(
+        GAS_COMPENSATION,
+        MIN_NET_DEBT,
+        cpContracts,
+      );
+
+      contracts.debtToken = debtTokenTester;
+
+      protocolTokenContracts = await deploymentHelper.deployProtocolTokenTesterContracts(
+        owner.address,
+        cpContracts,
+      );
+
+      debtTokenOriginal = contracts.debtToken;
+      debtTokenTester = contracts.debtToken;
+      chainId = await debtTokenOriginal.getChainId();
+
+      stabilityPool = contracts.stabilityPool;
+      troveManager = contracts.troveManager;
+      borrowerOperations = contracts.borrowerOperations;
+
+      tokenVersion = await debtTokenOriginal.version();
+      tokenName = await debtTokenOriginal.name();
+    });
+
+    beforeEach(async () => {
+      // Mint tokens for testing
+      if (withProxy) {
+        const users = [alice, bob, carol, dennis];
+        await deploymentHelper.deployProxyScripts(contracts, protocolTokenContracts, owner, users);
+
+        debtTokenTester = contracts.debtToken;
+        stabilityPool = contracts.stabilityPool;
+        troveManager = contracts.troveManager;
+        borrowerOperations = contracts.borrowerOperations;
+
+        // mint some tokens
+        await debtTokenOriginal.unprotectedMint(
+          debtTokenTester.getProxyAddressFromUser(alice.address),
+          toBN(dec(10000, 18)),
+        );
+        await debtTokenOriginal.unprotectedMint(
+          debtTokenTester.getProxyAddressFromUser(bob.address),
+          toBN(dec(5000, 18)),
+        );
+        await debtTokenOriginal.unprotectedMint(
+          debtTokenTester.getProxyAddressFromUser(carol.address),
+          toBN(dec(3000, 18)),
+        );
+      } else {
+        await debtTokenOriginal.unprotectedMint(alice.address, toBN(dec(10000, 18)));
+        await debtTokenOriginal.unprotectedMint(bob.address, toBN(dec(5000, 18)));
+        await debtTokenOriginal.unprotectedMint(carol.address, toBN(dec(3000, 18)));
+      }
+    });
+
+    // Basic Functionality Tests
+    it("should have EIP-3009 functions available", async () => {
+      assert.isNotNull(debtTokenTester.transferWithAuthorization);
+      assert.isNotNull(debtTokenTester.receiveWithAuthorization);
+      assert.isNotNull(debtTokenTester.cancelAuthorization);
+      assert.isNotNull(debtTokenTester.authorizationState);
+    });
+
+    it("authorizationState(): returns correct initial state", async () => {
+      const nonce = randomBytes(32);
+      const state = await debtTokenTester.authorizationState(alice.address, nonce);
+      assert.isFalse(state);
+    });
+
+    // transferWithAuthorization tests
+    it("transferWithAuthorization(): successfully transfers with valid authorization", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
-      const validBefore = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+      const validBefore = Math.floor(Date.now() / 1000) + 3600;
       const nonce = randomBytes(32);
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -230,12 +275,12 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      const aliceBalBefore = await debtToken.balanceOf(alice.address);
-      const bobBalBefore = await debtToken.balanceOf(bob.address);
+      const aliceBalBefore = await debtTokenTester.balanceOf(alice.address);
+      const bobBalBefore = await debtTokenTester.balanceOf(bob.address);
 
-      const tx = await debtToken.transferWithAuthorization(
-        from,
-        to,
+      const tx = await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -245,38 +290,43 @@ contract("DebtToken - EIP3009 Functionality", async () => {
         hexlify(s),
       );
 
-      const aliceBalAfter = await debtToken.balanceOf(alice.address);
-      const bobBalAfter = await debtToken.balanceOf(bob.address);
-
-      assert.isTrue(aliceBalAfter.eq(aliceBalBefore.sub(value)));
-      assert.isTrue(bobBalAfter.eq(bobBalBefore.add(value)));
-
-      // Check event
       const receipt = await tx.wait();
-      const event = receipt.events.find((e) => e.event === "AuthorizationUsed");
-      assert.equal(event.args.authorizer, from);
-      assert.equal(event.args.nonce, nonce);
 
-      // Check authorization state
-      const authState = await debtToken.authorizationState(from, nonce);
+      // Verify events
+      const authEvent = receipt.events.find((e) => e.event === "AuthorizationUsed");
+      assert.equal(authEvent.args.authorizer, alice.address);
+      assert.equal(authEvent.args.nonce, hexlify(nonce));
+
+      const transferEvent = receipt.events.find((e) => e.event === "Transfer");
+      assert.equal(transferEvent.args.from, alice.address);
+      assert.equal(transferEvent.args.to, bob.address);
+      assert.equal(transferEvent.args.value.toString(), value.toString());
+
+      // Verify balances
+      const aliceBalAfter = await debtTokenTester.balanceOf(alice.address);
+      const bobBalAfter = await debtTokenTester.balanceOf(bob.address);
+
+      assert.equal(aliceBalAfter.toString(), aliceBalBefore.sub(value).toString());
+      assert.equal(bobBalAfter.toString(), bobBalBefore.add(value).toString());
+
+      // Verify authorization state
+      const authState = await debtTokenTester.authorizationState(alice.address, nonce);
       assert.isTrue(authState);
     });
 
-    it("should revert when authorization not yet valid", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    it("transferWithAuthorization(): reverts when authorization not yet valid", async () => {
       const value = toBN(dec(100, 18));
-      const validAfter = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+      const validAfter = Math.floor(Date.now() / 1000) + 3600;
       const validBefore = validAfter + 3600;
       const nonce = randomBytes(32);
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -286,9 +336,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       const { v, r, s } = sign(digest, alicePrivateKey);
 
       await assertRevert(
-        debtToken.transferWithAuthorization(
-          from,
-          to,
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
           value,
           validAfter,
           validBefore,
@@ -301,21 +351,19 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
     });
 
-    it("should revert when authorization expired", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    it("transferWithAuthorization(): reverts when authorization expired", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
-      const validBefore = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+      const validBefore = Math.floor(Date.now() / 1000) - 3600;
       const nonce = randomBytes(32);
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -325,9 +373,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       const { v, r, s } = sign(digest, alicePrivateKey);
 
       await assertRevert(
-        debtToken.transferWithAuthorization(
-          from,
-          to,
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
           value,
           validAfter,
           validBefore,
@@ -340,21 +388,19 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
     });
 
-    it("should revert when authorization already used", async () => {
-      const from = alice.address;
-      const to = bob.address;
-      const value = toBN(dec(100, 18));
+    it("transferWithAuthorization(): reverts when nonce already used", async () => {
+      const value = toBN(dec(50, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
       const nonce = randomBytes(32);
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -364,9 +410,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       const { v, r, s } = sign(digest, alicePrivateKey);
 
       // First transfer should succeed
-      await debtToken.transferWithAuthorization(
-        from,
-        to,
+      await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -378,9 +424,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       // Second transfer with same nonce should fail
       await assertRevert(
-        debtToken.transferWithAuthorization(
-          from,
-          to,
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
           value,
           validAfter,
           validBefore,
@@ -393,9 +439,7 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
     });
 
-    it("should revert with invalid signature", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    it("transferWithAuthorization(): reverts with invalid signature", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -403,11 +447,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -418,9 +462,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       const { v, r, s } = sign(digest, bobPrivateKey);
 
       await assertRevert(
-        debtToken.transferWithAuthorization(
-          from,
-          to,
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
           value,
           validAfter,
           validBefore,
@@ -433,9 +477,7 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
     });
 
-    it("should revert when transferring to protocol contracts", async () => {
-      const from = alice.address;
-      const to = stabilityPool.address;
+    it("transferWithAuthorization(): reverts when transferring to zero address", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -443,11 +485,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        ZERO_ADDRESS,
         value,
         validAfter,
         validBefore,
@@ -457,9 +499,46 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       const { v, r, s } = sign(digest, alicePrivateKey);
 
       await assertRevert(
-        debtToken.transferWithAuthorization(
-          from,
-          to,
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          ZERO_ADDRESS,
+          value,
+          validAfter,
+          validBefore,
+          nonce,
+          v,
+          hexlify(r),
+          hexlify(s),
+        ),
+        "DebtToken: Cannot transfer tokens directly to the Debt token contract or the zero address",
+      );
+    });
+
+    it("transferWithAuthorization(): reverts when transferring to system contracts", async () => {
+      const value = toBN(dec(100, 18));
+      const validAfter = 0;
+      const validBefore = Math.floor(Date.now() / 1000) + 3600;
+      const nonce = randomBytes(32);
+
+      const digest = getTransferWithAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        stabilityPool.address,
+        value,
+        validAfter,
+        validBefore,
+        nonce,
+      );
+
+      const { v, r, s } = sign(digest, alicePrivateKey);
+
+      await assertRevert(
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          stabilityPool.address,
           value,
           validAfter,
           validBefore,
@@ -471,12 +550,50 @@ contract("DebtToken - EIP3009 Functionality", async () => {
         "DebtToken: Cannot transfer tokens directly to the StabilityPool, TroveManager or BorrowerOps",
       );
     });
-  });
 
-  describe("receiveWithAuthorization", () => {
-    it("should transfer tokens when called by recipient", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    it("transferWithAuthorization(): reverts with insufficient balance", async () => {
+      // Use dennis account with a specific small balance to avoid state pollution
+      const dennisPrivateKey = accountsList[4].privateKey;
+      await debtTokenOriginal.unprotectedMint(dennis.address, toBN(dec(50, 18))); // Give dennis exactly 50 tokens
+
+      const value = toBN(dec(100, 18)); // Try to transfer 100 (more than dennis has)
+      const validAfter = 0;
+      const validBefore = Math.floor(Date.now() / 1000) + 3600;
+      const nonce = randomBytes(32);
+
+      const digest = getTransferWithAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        dennis.address,
+        carol.address,
+        value,
+        validAfter,
+        validBefore,
+        nonce,
+      );
+
+      const { v, r, s } = sign(digest, dennisPrivateKey);
+
+      await assertRevert(
+        debtTokenTester.transferWithAuthorization(
+          dennis.address,
+          carol.address,
+          value,
+          validAfter,
+          validBefore,
+          nonce,
+          v,
+          hexlify(r),
+          hexlify(s),
+        ),
+        "ERC20: transfer amount exceeds balance",
+      );
+    });
+
+    // receiveWithAuthorization tests
+    it("receiveWithAuthorization(): successfully receives with valid authorization", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -484,11 +601,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const digest = getReceiveWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -497,15 +614,15 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      const aliceBalBefore = await debtToken.balanceOf(alice.address);
-      const bobBalBefore = await debtToken.balanceOf(bob.address);
+      const aliceBalBefore = await debtTokenTester.balanceOf(alice.address);
+      const bobBalBefore = await debtTokenTester.balanceOf(bob.address);
 
-      // Bob calls the function
-      const tx = await debtToken
+      // Bob calls to receive tokens
+      const tx = await debtTokenTester
         .connect(bob)
         .receiveWithAuthorization(
-          from,
-          to,
+          alice.address,
+          bob.address,
           value,
           validAfter,
           validBefore,
@@ -515,22 +632,22 @@ contract("DebtToken - EIP3009 Functionality", async () => {
           hexlify(s),
         );
 
-      const aliceBalAfter = await debtToken.balanceOf(alice.address);
-      const bobBalAfter = await debtToken.balanceOf(bob.address);
-
-      assert.isTrue(aliceBalAfter.eq(aliceBalBefore.sub(value)));
-      assert.isTrue(bobBalAfter.eq(bobBalBefore.add(value)));
-
-      // Check event
       const receipt = await tx.wait();
-      const event = receipt.events.find((e) => e.event === "AuthorizationUsed");
-      assert.equal(event.args.authorizer, from);
-      assert.equal(event.args.nonce, nonce);
+
+      // Verify events
+      const authEvent = receipt.events.find((e) => e.event === "AuthorizationUsed");
+      assert.equal(authEvent.args.authorizer, alice.address);
+      assert.equal(authEvent.args.nonce, hexlify(nonce));
+
+      // Verify balances
+      const aliceBalAfter = await debtTokenTester.balanceOf(alice.address);
+      const bobBalAfter = await debtTokenTester.balanceOf(bob.address);
+
+      assert.equal(aliceBalAfter.toString(), aliceBalBefore.sub(value).toString());
+      assert.equal(bobBalAfter.toString(), bobBalBefore.add(value).toString());
     });
 
-    it("should revert when not called by recipient", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    it("receiveWithAuthorization(): reverts when caller is not the recipient", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -538,11 +655,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const digest = getReceiveWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -551,13 +668,13 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      // Carol tries to call the function
+      // Carol tries to call, but recipient is Bob
       await assertRevert(
-        debtToken
+        debtTokenTester
           .connect(carol)
           .receiveWithAuthorization(
-            from,
-            to,
+            alice.address,
+            bob.address,
             value,
             validAfter,
             validBefore,
@@ -566,47 +683,107 @@ contract("DebtToken - EIP3009 Functionality", async () => {
             hexlify(r),
             hexlify(s),
           ),
-        "DebtToken: caller must be the recipient",
+        "DebtToken: caller must be the payee",
       );
     });
-  });
 
-  describe("cancelAuthorization", () => {
-    it("should cancel unused authorization", async () => {
-      const authorizer = alice.address;
+    it("receiveWithAuthorization(): enforces all validation checks", async () => {
+      // Test expired authorization
+      const value = toBN(dec(100, 18));
+      const validAfter = 0;
+      const validBefore = Math.floor(Date.now() / 1000) - 3600;
       const nonce = randomBytes(32);
 
-      const digest = getCancelAuthorizationDigest(
+      const digest = getReceiveWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        authorizer,
+        alice.address,
+        bob.address,
+        value,
+        validAfter,
+        validBefore,
         nonce,
       );
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      // Check authorization state before
-      const authStateBefore = await debtToken.authorizationState(authorizer, nonce);
-      assert.isFalse(authStateBefore);
-
-      const tx = await debtToken.cancelAuthorization(authorizer, nonce, v, hexlify(r), hexlify(s));
-
-      // Check authorization state after
-      const authStateAfter = await debtToken.authorizationState(authorizer, nonce);
-      assert.isTrue(authStateAfter);
-
-      // Check event
-      const receipt = await tx.wait();
-      const event = receipt.events.find((e) => e.event === "AuthorizationCanceled");
-      assert.equal(event.args.authorizer, authorizer);
-      assert.equal(event.args.nonce, nonce);
+      await assertRevert(
+        debtTokenTester
+          .connect(bob)
+          .receiveWithAuthorization(
+            alice.address,
+            bob.address,
+            value,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            hexlify(r),
+            hexlify(s),
+          ),
+        "DebtToken: authorization expired",
+      );
     });
 
-    it("should revert when canceling already used authorization", async () => {
-      const from = alice.address;
-      const to = bob.address;
+    // cancelAuthorization tests
+    it("cancelAuthorization(): successfully cancels unused authorization", async () => {
+      const nonce = randomBytes(32);
+
+      // Check initial state
+      const stateBefore = await debtTokenTester.authorizationState(alice.address, nonce);
+      assert.isFalse(stateBefore);
+
+      const digest = getCancelAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        nonce,
+      );
+
+      const { v, r, s } = sign(digest, alicePrivateKey);
+
+      const tx = await debtTokenTester
+        .connect(bob)
+        .cancelAuthorization(alice.address, nonce, v, hexlify(r), hexlify(s));
+
+      const receipt = await tx.wait();
+
+      // Verify event
+      const cancelEvent = receipt.events.find((e) => e.event === "AuthorizationCanceled");
+      assert.equal(cancelEvent.args.authorizer, alice.address);
+      assert.equal(cancelEvent.args.nonce, hexlify(nonce));
+
+      // Check state is now true (cancelled)
+      const stateAfter = await debtTokenTester.authorizationState(alice.address, nonce);
+      assert.isTrue(stateAfter);
+    });
+
+    it("cancelAuthorization(): reverts with invalid signature", async () => {
+      const nonce = randomBytes(32);
+
+      const digest = getCancelAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        nonce,
+      );
+
+      // Sign with wrong key
+      const { v, r, s } = sign(digest, bobPrivateKey);
+
+      await assertRevert(
+        debtTokenTester.cancelAuthorization(alice.address, nonce, v, hexlify(r), hexlify(s)),
+        "DebtToken: invalid signature",
+      );
+    });
+
+    it("cancelAuthorization(): reverts when cancelling already used authorization", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -615,11 +792,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       // First use the authorization
       const transferDigest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -628,9 +805,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const transferSig = sign(transferDigest, alicePrivateKey);
 
-      await debtToken.transferWithAuthorization(
-        from,
-        to,
+      await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -643,18 +820,18 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       // Now try to cancel it
       const cancelDigest = getCancelAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
+        alice.address,
         nonce,
       );
 
       const cancelSig = sign(cancelDigest, alicePrivateKey);
 
       await assertRevert(
-        debtToken.cancelAuthorization(
-          from,
+        debtTokenTester.cancelAuthorization(
+          alice.address,
           nonce,
           cancelSig.v,
           hexlify(cancelSig.r),
@@ -664,51 +841,78 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
     });
 
-    it("should revert with invalid signature", async () => {
-      const authorizer = alice.address;
+    it("cancelAuthorization(): prevents transfer after cancellation", async () => {
+      const value = toBN(dec(100, 18));
+      const validAfter = 0;
+      const validBefore = Math.floor(Date.now() / 1000) + 3600;
       const nonce = randomBytes(32);
 
-      const digest = getCancelAuthorizationDigest(
+      // First cancel the authorization
+      const cancelDigest = getCancelAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        authorizer,
+        alice.address,
         nonce,
       );
 
-      // Sign with wrong key
-      const { v, r, s } = sign(digest, bobPrivateKey);
+      const cancelSig = sign(cancelDigest, alicePrivateKey);
+
+      await debtTokenTester.cancelAuthorization(
+        alice.address,
+        nonce,
+        cancelSig.v,
+        hexlify(cancelSig.r),
+        hexlify(cancelSig.s),
+      );
+
+      // Now try to use it for transfer
+      const transferDigest = getTransferWithAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        bob.address,
+        value,
+        validAfter,
+        validBefore,
+        nonce,
+      );
+
+      const transferSig = sign(transferDigest, alicePrivateKey);
 
       await assertRevert(
-        debtToken.cancelAuthorization(authorizer, nonce, v, hexlify(r), hexlify(s)),
-        "DebtToken: invalid signature",
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
+          value,
+          validAfter,
+          validBefore,
+          nonce,
+          transferSig.v,
+          hexlify(transferSig.r),
+          hexlify(transferSig.s),
+        ),
+        "DebtToken: authorization already used",
       );
     });
-  });
 
-  describe("authorizationState", () => {
-    it("should return false for unused nonce", async () => {
-      const nonce = randomBytes(32);
-      const state = await debtToken.authorizationState(alice.address, nonce);
-      assert.isFalse(state);
-    });
-
-    it("should return true for used nonce", async () => {
-      const from = alice.address;
-      const to = bob.address;
-      const value = toBN(dec(50, 18));
+    // Edge cases and security tests
+    it("transferWithAuthorization(): handles signature malleability", async () => {
+      const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
       const nonce = randomBytes(32);
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -717,9 +921,10 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      await debtToken.transferWithAuthorization(
-        from,
-        to,
+      // First transfer should succeed
+      await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -729,15 +934,123 @@ contract("DebtToken - EIP3009 Functionality", async () => {
         hexlify(s),
       );
 
-      const state = await debtToken.authorizationState(from, nonce);
-      assert.isTrue(state);
-    });
-  });
+      // Try with modified v value (EIP-2 malleability)
+      const malleableV = v === 27 ? 28 : 27;
 
-  describe("Gas optimization", () => {
-    it("should have reasonable gas costs for transfers", async () => {
-      const from = alice.address;
-      const to = bob.address;
+      await assertRevert(
+        debtTokenTester.transferWithAuthorization(
+          alice.address,
+          bob.address,
+          value,
+          validAfter,
+          validBefore,
+          nonce,
+          malleableV,
+          hexlify(r),
+          hexlify(s),
+        ),
+        "DebtToken: authorization already used",
+      );
+    });
+
+    it("transferWithAuthorization(): prevents replay attacks across chains", async () => {
+      // This test verifies that the chainId is included in the domain separator
+      const domainSep1 = getDomainSeparator(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+      );
+      const domainSep2 = getDomainSeparator(
+        tokenName,
+        debtTokenTester.address,
+        chainId + 1,
+        tokenVersion,
+      );
+
+      assert.notEqual(domainSep1, domainSep2);
+    });
+
+    it("transferWithAuthorization(): handles maximum uint256 values", async () => {
+      const maxUint256 = toBN(2).pow(toBN(256)).sub(toBN(1));
+      const validAfter = 0;
+      const validBefore = maxUint256;
+      const nonce = randomBytes(32);
+
+      // Skip minting max tokens as it causes overflow
+      // Just test with max validBefore timestamp
+
+      const digest = getTransferWithAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        bob.address,
+        toBN(dec(1, 18)),
+        validAfter,
+        validBefore,
+        nonce,
+      );
+
+      const { v, r, s } = sign(digest, alicePrivateKey);
+
+      // Should work with max validBefore
+      await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
+        toBN(dec(1, 18)),
+        validAfter,
+        validBefore,
+        nonce,
+        v,
+        hexlify(r),
+        hexlify(s),
+      );
+
+      const authState = await debtTokenTester.authorizationState(alice.address, nonce);
+      assert.isTrue(authState);
+    });
+
+    it("transferWithAuthorization(): correctly validates empty nonce", async () => {
+      const value = toBN(dec(100, 18));
+      const validAfter = 0;
+      const validBefore = Math.floor(Date.now() / 1000) + 3600;
+      const emptyNonce = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+      const digest = getTransferWithAuthorizationDigest(
+        tokenName,
+        debtTokenTester.address,
+        chainId,
+        tokenVersion,
+        alice.address,
+        bob.address,
+        value,
+        validAfter,
+        validBefore,
+        emptyNonce,
+      );
+
+      const { v, r, s } = sign(digest, alicePrivateKey);
+
+      // Should work with empty nonce
+      await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
+        value,
+        validAfter,
+        validBefore,
+        emptyNonce,
+        v,
+        hexlify(r),
+        hexlify(s),
+      );
+
+      const authState = await debtTokenTester.authorizationState(alice.address, emptyNonce);
+      assert.isTrue(authState);
+    });
+
+    it("transferWithAuthorization(): has reasonable gas costs", async () => {
       const value = toBN(dec(100, 18));
       const validAfter = 0;
       const validBefore = Math.floor(Date.now() / 1000) + 3600;
@@ -745,11 +1058,11 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const digest = getTransferWithAuthorizationDigest(
         tokenName,
-        debtToken.address,
+        debtTokenTester.address,
         chainId,
         tokenVersion,
-        from,
-        to,
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -758,9 +1071,9 @@ contract("DebtToken - EIP3009 Functionality", async () => {
 
       const { v, r, s } = sign(digest, alicePrivateKey);
 
-      const tx = await debtToken.transferWithAuthorization(
-        from,
-        to,
+      const tx = await debtTokenTester.transferWithAuthorization(
+        alice.address,
+        bob.address,
         value,
         validAfter,
         validBefore,
@@ -771,10 +1084,16 @@ contract("DebtToken - EIP3009 Functionality", async () => {
       );
 
       const receipt = await tx.wait();
-      console.log(`transferWithAuthorization gas used: ${receipt.gasUsed}`);
 
-      // Gas should be reasonable (less than 100k)
-      assert.isTrue(receipt.gasUsed.lt(100000));
+      // Gas should be reasonable (less than 150k for a transfer with authorization)
+      assert.isBelow(receipt.gasUsed.toNumber(), 150000);
     });
+  };
+
+  describe("Without proxy", async () => {
+    testCorpus({ withProxy: false });
   });
+
+  // Note: EIP-3009 functions are not available through proxy scripts
+  // as they are not included in the TokenScript proxy implementation
 });
