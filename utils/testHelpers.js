@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 const BigNumber = require("bignumber.js");
 
 const MoneyValues = {
