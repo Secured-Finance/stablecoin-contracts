@@ -36,6 +36,11 @@ jobs:
         run: |
           git config user.name "SF Machine User[bot]"
           git config user.email "${{ secrets.MACHINE_USER_APP_ID }}+sf-machine-user[bot]@users.noreply.github.com"
+      - name: Set environment variables
+        run: |
+          echo "RPC_ENDPOINT=${{ secrets.RPC_ENDPOINT }}" >> $GITHUB_ENV
+          echo "DEPLOYER_PRIVATEKEY=${{ secrets.DEPLOYER_PRIVATEKEY }}" >> $GITHUB_ENV
+          echo "SAFE_API_URL=${{ vars.SAFE_API_URL }}" >> $GITHUB_ENV
       - uses: actions/setup-node@v3
         with:
           node-version-file: '.nvmrc'
