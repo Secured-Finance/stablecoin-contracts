@@ -46,8 +46,6 @@ jobs:
           node-version-file: ".nvmrc"
       - name: Install Dependencies
         run: npm ci
-      - name: Build Smart Contracts
-        run: npm run prepare:compile
       - name: Upgrade Contracts
         env:
           UPGRADE_CONTRACTS: ${{ github.event.inputs.upgrade_contracts }}
