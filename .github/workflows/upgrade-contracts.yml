@@ -20,6 +20,7 @@ jobs:
   upgrade:
     name: Upgrade Contracts
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.network }}
     steps:
       - name: Generate token
         id: generate_token
