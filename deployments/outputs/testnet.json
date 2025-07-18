@@ -63,7 +63,8 @@
   "borrowerOperations": {
     "address": "0x9a01e0A43861627fA9805C4321131B89c1ba1D74",
     "txHashes": [
-      "0xb4a76632761113ef273136922b9f1ea285e891c10d056ab1a44b981fa9360126"
+      "0xb4a76632761113ef273136922b9f1ea285e891c10d056ab1a44b981fa9360126",
+      "0xbd01a282e552cba01dd7900b90b01c18aaeffc0ead14f1596ae1549490788918"
     ]
   },
   "hintHelpers": {
