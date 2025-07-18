@@ -57,7 +57,7 @@ jobs:
         shell: bash
         if: ${{ steps.diff.outputs.count > 0 }}
         run: |
-          git commit -m "chore: upgrade contracts [SF-1426]" --no-verify
+          git commit -m "chore: upgrade contracts" --no-verify
           git push
       - name: Merge main into develop
         shell: bash
