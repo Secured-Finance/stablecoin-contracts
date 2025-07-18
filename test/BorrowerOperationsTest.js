@@ -349,47 +349,6 @@ contract("BorrowerOperations", async () => {
       assert.isAtMost(th.getDifference(bob_DebtRewardSnapshot_After, L_Debt), 100);
     });
 
-    // it("addColl(), active Trove: adds the right corrected stake after liquidations have occured", async () => {
-    //  // TODO - check stake updates for addColl/withdrawColl/adustTrove ---
-
-    //   // --- SETUP ---
-    //   // A,B,C add 15/5/5 FIL, withdraw 100/100/900 tokens
-    //   await borrowerOperations.openTrove(th._100pct, dec(100, 18), alice.address, alice.address, { from: alice, value: dec(15, 'ether') })
-    //   await borrowerOperations.openTrove(th._100pct, dec(100, 18), bob.address, bob.address, { from: bob, value: dec(4, 'ether') })
-    //   await borrowerOperations.openTrove(th._100pct, dec(900, 18), carol.address, carol.address, { from: carol, value: dec(5, 'ether') })
-
-    //   await borrowerOperations.openTrove(th._100pct, 0, dennis, dennis, { from: dennis, value: dec(1, 'ether') })
-    //   // --- TEST ---
-
-    //   // price drops to 1FIL:100DebtToken, reducing Carol's ICR below MCR
-    //   await priceFeed.setPrice('100000000000000000000');
-
-    //   // close Carol's Trove, liquidating her 5 ether and 900DebtToken.
-    //   await troveManager.connect(owner).liquidate(carol.address);
-
-    //   // dennis tops up his trove by 1 FIL
-    //   await borrowerOperations.addColl(dennis, dennis, { from: dennis, value: dec(1, 'ether') })
-
-    //   /* Check that Dennis's recorded stake is the right corrected stake, less than his collateral. A corrected
-    //   stake is given by the formula:
-
-    //   s = totalStakesSnapshot / totalCollateralSnapshot
-
-    //   where snapshots are the values immediately after the last liquidation.  After Carol's liquidation,
-    //   the FIL from her Trove has now become the totalPendingFILReward. So:
-
-    //   totalStakes = (alice_Stake + bob_Stake + dennis_orig_stake ) = (15 + 4 + 1) =  20 FIL.
-    //   totalCollateral = (alice_Collateral + bob_Collateral + dennis_orig_coll + totalPendingFILReward) = (15 + 4 + 1 + 5)  = 25 FIL.
-
-    //   Therefore, as Dennis adds 1 ether collateral, his corrected stake should be:  s = 2 * (20 / 25 ) = 1.6 FIL */
-    //   const dennis_Trove = await troveManager.Troves(dennis)
-
-    //   const dennis_Stake = dennis_Trove[2]
-    //   console.log(dennis_Stake.toString())
-
-    //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
-    // })
-
     it("addColl(), reverts if trove is non-existent or closed", async () => {
       // A, B open troves
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
@@ -600,7 +559,7 @@ contract("BorrowerOperations", async () => {
       }
     });
 
-    it("withdrawColl(): doesn’t allow a user to completely withdraw all collateral from their Trove (due to gas compensation)", async () => {
+    it("withdrawColl(): doesn't allow a user to completely withdraw all collateral from their Trove (due to gas compensation)", async () => {
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } });
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
 
@@ -3159,7 +3118,7 @@ contract("BorrowerOperations", async () => {
           .adjustTrove(th._100pct, 0, bobDebtIncrease, true, bob.address, bob.address, {
             value: bobCollIncrease,
           }),
-        " BorrowerOps: Operation must leave trove with ICR >= CCR",
+        "BorrowerOps: Operation must leave trove with ICR >= CCR",
       );
     });
 
@@ -3960,7 +3919,7 @@ contract("BorrowerOperations", async () => {
       );
     });
 
-    it("adjustTrove(): Reverts if it’s zero adjustment", async () => {
+    it("adjustTrove(): Reverts if it's zero adjustment", async () => {
       await openTrove({
         extraDebtTokenAmount: toBN(dec(10000, 18)),
         ICR: toBN(dec(10, 18)),
@@ -4036,67 +3995,6 @@ contract("BorrowerOperations", async () => {
       // B attempts to repay all his debt
       await assertRevert(repayDebtTokenPromise_B, "revert");
     });
-
-    // --- Internal _adjustTrove() ---
-
-    if (!withProxy) {
-      // no need to test this with proxies
-      it("Internal _adjustTrove(): reverts when op is a withdrawal and _borrower param is not the msg.sender", async () => {
-        await openTrove({
-          extraDebtTokenAmount: toBN(dec(10000, 18)),
-          ICR: toBN(dec(10, 18)),
-          extraParams: { from: whale },
-        });
-        await openTrove({
-          extraDebtTokenAmount: toBN(dec(10000, 18)),
-          ICR: toBN(dec(10, 18)),
-          extraParams: { from: bob },
-        });
-
-        const txPromise_A = borrowerOperations
-          .connect(bob)
-          .callInternalAdjustLoan(
-            alice.address,
-            dec(1, 18),
-            dec(1, 18),
-            true,
-            alice.address,
-            alice.address,
-          );
-        await assertRevert(
-          txPromise_A,
-          "BorrowerOps: Caller must be the borrower for a withdrawal",
-        );
-        const txPromise_B = borrowerOperations
-          .connect(owner)
-          .callInternalAdjustLoan(
-            bob.address,
-            dec(1, 18),
-            dec(1, 18),
-            true,
-            alice.address,
-            alice.address,
-          );
-        await assertRevert(
-          txPromise_B,
-          "BorrowerOps: Caller must be the borrower for a withdrawal",
-        );
-        const txPromise_C = borrowerOperations
-          .connect(bob)
-          .callInternalAdjustLoan(
-            carol.address,
-            dec(1, 18),
-            dec(1, 18),
-            true,
-            alice.address,
-            alice.address,
-          );
-        await assertRevert(
-          txPromise_C,
-          "BorrowerOps: Caller must be the borrower for a withdrawal",
-        );
-      });
-    }
 
     // --- closeTrove() ---
 

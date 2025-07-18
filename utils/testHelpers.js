@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 const BigNumber = require("bignumber.js");
 
 const MoneyValues = {
@@ -33,6 +34,23 @@ const TimeValues = {
   MINUTES_IN_ONE_WEEK: 60 * 24 * 7,
   MINUTES_IN_ONE_MONTH: 60 * 24 * 30,
   MINUTES_IN_ONE_YEAR: 60 * 24 * 365,
+};
+
+const getRevertReason = async (txHash) => {
+  const trace = await hre.network.provider.send("debug_traceTransaction", [txHash]);
+  const revertOutput = trace?.returnValue;
+
+  if (revertOutput?.startsWith("0x08c379a0")) {
+    const reasonHex = "0x" + revertOutput.slice(10);
+    const reason = ethers.utils.defaultAbiCoder.decode(["string"], reasonHex);
+    return reason[0];
+  } else if (revertOutput !== "0x") {
+    console.warn("Raw revert output:", revertOutput);
+    return null;
+  } else {
+    console.warn("No revert data found.");
+    return null;
+  }
 };
 
 class TestHelper {
@@ -1446,6 +1464,16 @@ class TestHelper {
       // if (message) {
       //   assert.include(err.message, message)
       // }
+    }
+  }
+
+  static async assertRevertWithoutAutomine(tx, message) {
+    try {
+      const receipt = await tx.wait();
+      assert.equal(receipt.status, 0); // when this assert fails, the expected revert didn't occur, i.e. the tx succeeded
+    } catch (error) {
+      const revertReason = await getRevertReason(error?.transactionHash);
+      assert.equal(revertReason, message);
     }
   }
 
