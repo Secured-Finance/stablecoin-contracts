@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       upgrade_contracts:
-        description: 'Contracts to upgrade (comma-separated)'
+        description: "Contracts to upgrade (comma-separated)"
         required: true
         type: string
       network:
-        description: 'Network'
+        description: "Network"
         required: true
-        default: 'testnet'
+        default: "testnet"
         type: choice
         options:
           - testnet
@@ -32,7 +32,7 @@ jobs:
         with:
           ref: ${{ (github.event.inputs.network == 'testnet' && 'develop') || 'main' }}
           token: ${{ steps.generate_token.outputs.token }}
-      - name: 'Setup for git'
+      - name: "Setup for git"
         run: |
           git config user.name "SF Machine User[bot]"
           git config user.email "${{ secrets.MACHINE_USER_APP_ID }}+sf-machine-user[bot]@users.noreply.github.com"
@@ -43,11 +43,11 @@ jobs:
           echo "SAFE_API_URL=${{ vars.SAFE_API_URL }}" >> $GITHUB_ENV
       - uses: actions/setup-node@v3
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
       - name: Install Dependencies
         run: npm ci
       - name: Build Smart Contracts
-        run: npm run compile
+        run: npm run prepare:compile
       - name: Upgrade Contracts
         env:
           UPGRADE_CONTRACTS: ${{ github.event.inputs.upgrade_contracts }}
