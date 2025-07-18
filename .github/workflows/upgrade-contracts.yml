@@ -1,0 +1,36 @@
+name: Upgrade Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      upgrade_contracts:
+        description: 'Contracts to upgrade (comma-separated)'
+        required: true
+        type: string
+        default: 'SortedTroves,TroveManager'
+      network:
+        description: 'Network'
+        required: true
+        default: 'testnet'
+        type: choice
+        options:
+          - testnet
+          - mainnet
+
+jobs:
+  upgrade:
+    name: Upgrade Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ (github.event.inputs.network == 'testnet' && 'develop') || 'main' }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Upgrade Contracts
+        env:
+          UPGRADE_CONTRACTS: ${{ github.event.inputs.upgrade_contracts }}
+        run: npx hardhat run --network ${{ github.event.inputs.network }} deployments/upgrade-contracts.js
