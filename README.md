@@ -91,3 +91,7 @@ $ docker run --rm --platform linux/amd64  -it -w /src -v `pwd`:/src mythril/myth
 
 - [Hexens | Jan 2025](./audits/2025-01-Hexens.pdf)
 - [Decurity | Mar 2025](./audits/2025-03-Decurity.pdf)
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
