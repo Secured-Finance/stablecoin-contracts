@@ -28,21 +28,16 @@ jobs:
         run: npm run check:prettier
       - name: Run ESLint
         run: npm run check:lint
-  # build-and-unit-test:
-  #   name: Unit Tests
-  #   runs-on: ubuntu-latest
-  #   if: github.actor != 'secured-finance-machine-user[bot]'
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version-file: ".nvmrc"
-  #     - name: Install Dependencies
-  #       run: npm ci
-  #     - name: Run Unit Tests
-  #       run: npm run coverage
-  #     - name: Upload Code Coverage
-  #       uses: codecov/codecov-action@v5
-  #       with:
-  #         token: ${{ secrets.CODECOV_TOKEN }}
-  #         fail_ci_if_error: true
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    if: github.actor != 'secured-finance-machine-user[bot]'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Dependencies
+        run: npm ci
+      - name: Run Unit Tests
+        run: npm run test
