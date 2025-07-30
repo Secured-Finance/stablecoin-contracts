@@ -114,6 +114,7 @@ Given the financial nature of this project:
 
 Ensure your pull request:
 
+- [ ] Targets the `develop` branch (not `main`)
 - [ ] References the related GitHub issue
 - [ ] Includes a clear description of changes
 - [ ] Has been tested locally
