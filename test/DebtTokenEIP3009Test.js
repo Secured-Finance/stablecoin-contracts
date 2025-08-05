@@ -146,7 +146,6 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
 
   const alicePrivateKey = accountsList[1].privateKey;
   const bobPrivateKey = accountsList[2].privateKey;
-  const carolPrivateKey = accountsList[3].privateKey;
 
   let chainId;
   let debtTokenOriginal;
@@ -163,7 +162,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
   before(async () => {
     await hre.network.provider.send("hardhat_reset");
     signers = await ethers.getSigners();
-    [owner, alice, bob, carol, dennis] = await signers.splice(0, 5);
+    [owner, alice, bob, dennis] = signers.splice(0, 4);
   });
 
   // Simple verification tests from DebtTokenEIP3009SimpleTest.js
