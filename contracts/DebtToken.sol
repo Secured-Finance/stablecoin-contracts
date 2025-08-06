@@ -420,6 +420,7 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         require(block.timestamp > _validAfter, "DebtToken: authorization not yet valid");
         require(block.timestamp < _validBefore, "DebtToken: authorization expired");
         require(!_authorizationStates[_from][_nonce], "DebtToken: authorization already used");
+        _requireValidRecipient(_to);
 
         address recoveredAddress = _recover(
             _v,
@@ -440,7 +441,6 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         _authorizationStates[_from][_nonce] = true;
         emit AuthorizationUsed(_from, _nonce);
 
-        _requireValidRecipient(_to);
         _transfer(_from, _to, _value);
     }
 
