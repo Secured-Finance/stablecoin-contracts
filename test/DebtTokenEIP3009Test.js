@@ -246,6 +246,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
 
   const testCorpus = ({ withProxy = false }) => {
     before(async () => {
+      await hre.network.provider.send("hardhat_reset");
       const transactionCount = await owner.getTransactionCount();
       const cpTesterContracts = await deploymentHelper.computeContractAddresses(
         owner.address,
