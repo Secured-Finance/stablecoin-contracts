@@ -43,6 +43,18 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
     bytes32 private constant _TYPE_HASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
+    // --- Data for EIP3009 ---
+
+    // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)");
+    bytes32 public constant TRANSFER_WITH_AUTHORIZATION_TYPEHASH =
+        0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267;
+    // keccak256("ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)");
+    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
+        0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
+    // keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
+    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
+        0x158b0a9edf7a828aad02f63cd515c68ef2f50ba807396f6d12842833a1597429;
+
     // Cache the domain separator as an immutable value, but also store the chain id that it corresponds to, in order to
     // invalidate the cached domain separator if the chain id changes.
     bytes32 private _CACHED_DOMAIN_SEPARATOR;
@@ -61,6 +73,9 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
     address public troveManagerAddress;
     address public stabilityPoolAddress;
     address public borrowerOperationsAddress;
+
+    // EIP-3009 authorization states
+    mapping(address => mapping(bytes32 => bool)) private _authorizationStates;
 
     constructor() initializer {}
 
@@ -189,23 +204,14 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         bytes32 _s
     ) external override {
         require(_deadline >= block.timestamp, "DebtToken: expired deadline");
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                domainSeparator(),
-                keccak256(
-                    abi.encode(
-                        _PERMIT_TYPEHASH,
-                        _owner,
-                        _spender,
-                        _amount,
-                        _nonces[_owner]++,
-                        _deadline
-                    )
-                )
-            )
+        uint256 currentNonce = _nonces[_owner];
+        _nonces[_owner] = currentNonce + 1;
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(_PERMIT_TYPEHASH, _owner, _spender, _amount, currentNonce, _deadline)
         );
-        address recoveredAddress = ecrecover(digest, _v, _r, _s);
         require(recoveredAddress == _owner, "DebtToken: invalid signature");
         _approve(_owner, _spender, _amount);
     }
@@ -335,5 +341,137 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
 
     function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
+    }
+
+    // --- EIP-3009 Functionality ---
+
+    /**
+     * @dev Internal function to recover signer address from a signed message
+     * @param _v Signature v component
+     * @param _r Signature r component
+     * @param _s Signature s component
+     * @param _typeHashAndData The encoded type hash and data for signature verification
+     * @return The recovered address
+     */
+    function _recover(
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s,
+        bytes memory _typeHashAndData
+    ) internal view returns (address) {
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", domainSeparator(), keccak256(_typeHashAndData))
+        );
+        address recovered = ecrecover(digest, _v, _r, _s);
+        require(recovered != address(0), "DebtToken: invalid signature");
+        return recovered;
+    }
+
+    function transferWithAuthorization(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(block.timestamp > _validAfter, "DebtToken: authorization not yet valid");
+        require(block.timestamp < _validBefore, "DebtToken: authorization expired");
+        require(!_authorizationStates[_from][_nonce], "DebtToken: authorization already used");
+        _requireValidRecipient(_to);
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(
+                TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
+                _from,
+                _to,
+                _value,
+                _validAfter,
+                _validBefore,
+                _nonce
+            )
+        );
+        require(recoveredAddress == _from, "DebtToken: invalid signature");
+
+        _authorizationStates[_from][_nonce] = true;
+        emit AuthorizationUsed(_from, _nonce);
+
+        _transfer(_from, _to, _value);
+    }
+
+    function receiveWithAuthorization(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(_to == msg.sender, "DebtToken: caller must be the recipient");
+        require(block.timestamp > _validAfter, "DebtToken: authorization not yet valid");
+        require(block.timestamp < _validBefore, "DebtToken: authorization expired");
+        require(!_authorizationStates[_from][_nonce], "DebtToken: authorization already used");
+        _requireValidRecipient(_to);
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(
+                RECEIVE_WITH_AUTHORIZATION_TYPEHASH,
+                _from,
+                _to,
+                _value,
+                _validAfter,
+                _validBefore,
+                _nonce
+            )
+        );
+        require(recoveredAddress == _from, "DebtToken: invalid signature");
+
+        _authorizationStates[_from][_nonce] = true;
+        emit AuthorizationUsed(_from, _nonce);
+
+        _transfer(_from, _to, _value);
+    }
+
+    function cancelAuthorization(
+        address _authorizer,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(
+            !_authorizationStates[_authorizer][_nonce],
+            "DebtToken: authorization already used"
+        );
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, _authorizer, _nonce)
+        );
+        require(recoveredAddress == _authorizer, "DebtToken: invalid signature");
+
+        _authorizationStates[_authorizer][_nonce] = true;
+        emit AuthorizationCanceled(_authorizer, _nonce);
+    }
+
+    function authorizationState(
+        address _authorizer,
+        bytes32 _nonce
+    ) external view override returns (bool) {
+        return _authorizationStates[_authorizer][_nonce];
     }
 }
