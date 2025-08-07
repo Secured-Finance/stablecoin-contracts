@@ -455,7 +455,7 @@ contract("DebtToken", async () => {
             r,
             s,
           ),
-          "DebtToken: invalid signature",
+          "EIP2612: invalid signature",
         );
 
         // Check that the zero address fails
@@ -469,7 +469,7 @@ contract("DebtToken", async () => {
             r,
             s,
           ),
-          "ERC20: approve from the zero address",
+          "EIP712: invalid signature",
         );
       });
 
@@ -477,7 +477,7 @@ contract("DebtToken", async () => {
         const deadline = 1;
 
         const { v, r, s, tx } = await buildPermitTx(deadline);
-        await assertRevert(tx, "DebtToken: expired deadline");
+        await assertRevert(tx, "EIP2612: expired deadline");
       });
 
       it("permits(): fails with the wrong signature", async () => {
@@ -495,7 +495,7 @@ contract("DebtToken", async () => {
           hexlify(s),
         );
 
-        await assertRevert(tx, "DebtToken: invalid signature");
+        await assertRevert(tx, "EIP2612: invalid signature");
       });
     }
   };

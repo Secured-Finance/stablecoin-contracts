@@ -429,7 +429,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(r),
           hexlify(s),
         ),
-        "DebtToken: authorization not yet valid",
+        "EIP3009: authorization not yet valid",
       );
     });
 
@@ -466,7 +466,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(r),
           hexlify(s),
         ),
-        "DebtToken: authorization expired",
+        "EIP3009: authorization expired",
       );
     });
 
@@ -517,7 +517,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(r),
           hexlify(s),
         ),
-        "DebtToken: authorization already used",
+        "EIP3009: authorization already used",
       );
     });
 
@@ -555,7 +555,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(r),
           hexlify(s),
         ),
-        "DebtToken: invalid signature",
+        "EIP3009: invalid signature",
       );
     });
 
@@ -765,7 +765,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
             hexlify(r),
             hexlify(s),
           ),
-        "DebtToken: caller must be the recipient",
+        "EIP3009: caller must be the recipient",
       );
     });
 
@@ -805,7 +805,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
             hexlify(r),
             hexlify(s),
           ),
-        "DebtToken: authorization expired",
+        "EIP3009: authorization expired",
       );
     });
 
@@ -861,7 +861,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
 
       await assertRevert(
         debtTokenTester.cancelAuthorization(alice.address, nonce, v, hexlify(r), hexlify(s)),
-        "DebtToken: invalid signature",
+        "EIP3009: invalid signature",
       );
     });
 
@@ -919,7 +919,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(cancelSig.r),
           hexlify(cancelSig.s),
         ),
-        "DebtToken: authorization already used",
+        "EIP3009: authorization already used",
       );
     });
 
@@ -977,7 +977,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(transferSig.r),
           hexlify(transferSig.s),
         ),
-        "DebtToken: authorization already used",
+        "EIP3009: authorization already used",
       );
     });
 
@@ -1031,7 +1031,7 @@ contract("DebtToken - EIP-3009 Functionality", async () => {
           hexlify(r),
           hexlify(s),
         ),
-        "DebtToken: authorization already used",
+        "EIP3009: authorization already used",
       );
     });
 
