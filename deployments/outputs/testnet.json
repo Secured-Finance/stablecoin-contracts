@@ -76,7 +76,8 @@
   "debtToken": {
     "address": "0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0",
     "txHashes": [
-      "0x0028f7d06d5ae83acfced5cc5b4cafe0d363eb8b3115dc8d8e87e6106fecb30e"
+      "0x0028f7d06d5ae83acfced5cc5b4cafe0d363eb8b3115dc8d8e87e6106fecb30e",
+      "0xcd50fe2c47ddb3ef33980575409af73f9b3ab4f22a3c621cb53026bb6fa92a40"
     ]
   },
   "unipool": {
