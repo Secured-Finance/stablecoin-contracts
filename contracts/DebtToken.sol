@@ -63,6 +63,7 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
     bytes32 private _HASHED_NAME;
     bytes32 private _HASHED_VERSION;
 
+    // Nonces for EIP-2612
     mapping(address => uint256) private _nonces;
 
     // User data for Debt token
@@ -184,7 +185,7 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         return true;
     }
 
-    // --- EIP 2612 Functionality ---
+    // --- EIP-712 Functionality ---
 
     function domainSeparator() public view override returns (bytes32) {
         if (_chainID() == _CACHED_CHAIN_ID) {
@@ -193,6 +194,30 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
             return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
         }
     }
+
+    /**
+     * @dev Internal function to recover signer address from a signed message
+     * @param _v Signature v component
+     * @param _r Signature r component
+     * @param _s Signature s component
+     * @param _typeHashAndData The encoded type hash and data for signature verification
+     * @return The recovered address
+     */
+    function _recover(
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s,
+        bytes memory _typeHashAndData
+    ) internal view returns (address) {
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", domainSeparator(), keccak256(_typeHashAndData))
+        );
+        address recovered = ecrecover(digest, _v, _r, _s);
+        require(recovered != address(0), "EIP712: invalid signature");
+        return recovered;
+    }
+
+    // --- EIP-2612 Functionality ---
 
     function permit(
         address _owner,
@@ -203,7 +228,7 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         bytes32 _r,
         bytes32 _s
     ) external override {
-        require(_deadline >= block.timestamp, "DebtToken: expired deadline");
+        require(_deadline >= block.timestamp, "EIP2612: expired deadline");
         uint256 currentNonce = _nonces[_owner];
         _nonces[_owner] = currentNonce + 1;
         address recoveredAddress = _recover(
@@ -212,13 +237,120 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
             _s,
             abi.encode(_PERMIT_TYPEHASH, _owner, _spender, _amount, currentNonce, _deadline)
         );
-        require(recoveredAddress == _owner, "DebtToken: invalid signature");
+
+        require(recoveredAddress == _owner, "EIP2612: invalid signature");
         _approve(_owner, _spender, _amount);
     }
 
     function nonces(address _owner) external view override returns (uint256) {
-        // FOR EIP 2612
         return _nonces[_owner];
+    }
+
+    // --- EIP-3009 Functionality ---
+
+    function transferWithAuthorization(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(block.timestamp > _validAfter, "EIP3009: authorization not yet valid");
+        require(block.timestamp < _validBefore, "EIP3009: authorization expired");
+        require(!_authorizationStates[_from][_nonce], "EIP3009: authorization already used");
+        _requireValidRecipient(_to);
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(
+                TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
+                _from,
+                _to,
+                _value,
+                _validAfter,
+                _validBefore,
+                _nonce
+            )
+        );
+        require(recoveredAddress == _from, "EIP3009: invalid signature");
+
+        _authorizationStates[_from][_nonce] = true;
+        emit AuthorizationUsed(_from, _nonce);
+
+        _transfer(_from, _to, _value);
+    }
+
+    function receiveWithAuthorization(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(_to == msg.sender, "EIP3009: caller must be the recipient");
+        require(block.timestamp > _validAfter, "EIP3009: authorization not yet valid");
+        require(block.timestamp < _validBefore, "EIP3009: authorization expired");
+        require(!_authorizationStates[_from][_nonce], "EIP3009: authorization already used");
+        _requireValidRecipient(_to);
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(
+                RECEIVE_WITH_AUTHORIZATION_TYPEHASH,
+                _from,
+                _to,
+                _value,
+                _validAfter,
+                _validBefore,
+                _nonce
+            )
+        );
+        require(recoveredAddress == _from, "EIP3009: invalid signature");
+
+        _authorizationStates[_from][_nonce] = true;
+        emit AuthorizationUsed(_from, _nonce);
+
+        _transfer(_from, _to, _value);
+    }
+
+    function cancelAuthorization(
+        address _authorizer,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external override {
+        require(!_authorizationStates[_authorizer][_nonce], "EIP3009: authorization already used");
+
+        address recoveredAddress = _recover(
+            _v,
+            _r,
+            _s,
+            abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, _authorizer, _nonce)
+        );
+        require(recoveredAddress == _authorizer, "EIP3009: invalid signature");
+
+        _authorizationStates[_authorizer][_nonce] = true;
+        emit AuthorizationCanceled(_authorizer, _nonce);
+    }
+
+    function authorizationState(
+        address _authorizer,
+        bytes32 _nonce
+    ) external view override returns (bool) {
+        return _authorizationStates[_authorizer][_nonce];
     }
 
     // --- Internal operations ---
@@ -341,137 +473,5 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
 
     function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
-    }
-
-    // --- EIP-3009 Functionality ---
-
-    /**
-     * @dev Internal function to recover signer address from a signed message
-     * @param _v Signature v component
-     * @param _r Signature r component
-     * @param _s Signature s component
-     * @param _typeHashAndData The encoded type hash and data for signature verification
-     * @return The recovered address
-     */
-    function _recover(
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s,
-        bytes memory _typeHashAndData
-    ) internal view returns (address) {
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", domainSeparator(), keccak256(_typeHashAndData))
-        );
-        address recovered = ecrecover(digest, _v, _r, _s);
-        require(recovered != address(0), "DebtToken: invalid signature");
-        return recovered;
-    }
-
-    function transferWithAuthorization(
-        address _from,
-        address _to,
-        uint256 _value,
-        uint256 _validAfter,
-        uint256 _validBefore,
-        bytes32 _nonce,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external override {
-        require(block.timestamp > _validAfter, "DebtToken: authorization not yet valid");
-        require(block.timestamp < _validBefore, "DebtToken: authorization expired");
-        require(!_authorizationStates[_from][_nonce], "DebtToken: authorization already used");
-        _requireValidRecipient(_to);
-
-        address recoveredAddress = _recover(
-            _v,
-            _r,
-            _s,
-            abi.encode(
-                TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
-                _from,
-                _to,
-                _value,
-                _validAfter,
-                _validBefore,
-                _nonce
-            )
-        );
-        require(recoveredAddress == _from, "DebtToken: invalid signature");
-
-        _authorizationStates[_from][_nonce] = true;
-        emit AuthorizationUsed(_from, _nonce);
-
-        _transfer(_from, _to, _value);
-    }
-
-    function receiveWithAuthorization(
-        address _from,
-        address _to,
-        uint256 _value,
-        uint256 _validAfter,
-        uint256 _validBefore,
-        bytes32 _nonce,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external override {
-        require(_to == msg.sender, "DebtToken: caller must be the recipient");
-        require(block.timestamp > _validAfter, "DebtToken: authorization not yet valid");
-        require(block.timestamp < _validBefore, "DebtToken: authorization expired");
-        require(!_authorizationStates[_from][_nonce], "DebtToken: authorization already used");
-        _requireValidRecipient(_to);
-
-        address recoveredAddress = _recover(
-            _v,
-            _r,
-            _s,
-            abi.encode(
-                RECEIVE_WITH_AUTHORIZATION_TYPEHASH,
-                _from,
-                _to,
-                _value,
-                _validAfter,
-                _validBefore,
-                _nonce
-            )
-        );
-        require(recoveredAddress == _from, "DebtToken: invalid signature");
-
-        _authorizationStates[_from][_nonce] = true;
-        emit AuthorizationUsed(_from, _nonce);
-
-        _transfer(_from, _to, _value);
-    }
-
-    function cancelAuthorization(
-        address _authorizer,
-        bytes32 _nonce,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external override {
-        require(
-            !_authorizationStates[_authorizer][_nonce],
-            "DebtToken: authorization already used"
-        );
-
-        address recoveredAddress = _recover(
-            _v,
-            _r,
-            _s,
-            abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, _authorizer, _nonce)
-        );
-        require(recoveredAddress == _authorizer, "DebtToken: invalid signature");
-
-        _authorizationStates[_authorizer][_nonce] = true;
-        emit AuthorizationCanceled(_authorizer, _nonce);
-    }
-
-    function authorizationState(
-        address _authorizer,
-        bytes32 _nonce
-    ) external view override returns (bool) {
-        return _authorizationStates[_authorizer][_nonce];
     }
 }
