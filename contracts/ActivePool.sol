@@ -99,13 +99,13 @@ contract ActivePool is OwnableUpgradeable, CheckContract, IActivePool {
     function increaseDebt(uint _amount) external override {
         _requireCallerIsBOorTroveM();
         debt = debt.add(_amount);
-        ActivePoolDebtUpdated(debt);
+        emit ActivePoolDebtUpdated(debt);
     }
 
     function decreaseDebt(uint _amount) external override {
         _requireCallerIsBOorTroveMorSP();
         debt = debt.sub(_amount);
-        ActivePoolDebtUpdated(debt);
+        emit ActivePoolDebtUpdated(debt);
     }
 
     // --- 'require' functions ---

@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 
 import "./Interfaces/IDebtToken.sol";
 import "./Dependencies/OpenZeppelin/access/OwnableUpgradeable.sol";
+import "./Dependencies/OpenZeppelin/cryptography/ECDSA.sol";
 import "./Dependencies/OpenZeppelin/math/SafeMath.sol";
 import "./Dependencies/CheckContract.sol";
 
@@ -212,9 +213,7 @@ contract DebtToken is OwnableUpgradeable, CheckContract, IDebtToken {
         bytes32 digest = keccak256(
             abi.encodePacked("\x19\x01", domainSeparator(), keccak256(_typeHashAndData))
         );
-        address recovered = ecrecover(digest, _v, _r, _s);
-        require(recovered != address(0), "EIP712: invalid signature");
-        return recovered;
+        return ECDSA.recover(digest, _v, _r, _s);
     }
 
     // --- EIP-2612 Functionality ---

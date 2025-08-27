@@ -179,7 +179,6 @@ contract BorrowerOperations is
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
         _requireTroveIsNotActive(contractsCache.troveManager, msg.sender);
 
-        vars.debtTokenFee;
         vars.netDebt = _debtTokenAmount;
 
         if (!isRecoveryMode) {
