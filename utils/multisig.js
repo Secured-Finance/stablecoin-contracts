@@ -55,6 +55,7 @@ class MultisigProposal {
       to,
       data,
       value: "0",
+      operation: 0, // Call operation
     });
   }
 
@@ -66,6 +67,7 @@ class MultisigProposal {
 
     const safeTransaction = await this.#safeSdk.createTransaction({
       safeTransactionData: this.#safeTransactions,
+      onlyCalls: true,
     });
 
     const safeTxHash = await this.#safeSdk.getTransactionHash(safeTransaction);
