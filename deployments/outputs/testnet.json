@@ -21,7 +21,8 @@
   "sortedTroves": {
     "address": "0xB7ee07b4a2A6F02941C6682DF2754389cfDdde03",
     "txHashes": [
-      "0x571e63723544036aa256e053703765db6a633221a18915c276c859067e0fef76"
+      "0x571e63723544036aa256e053703765db6a633221a18915c276c859067e0fef76",
+      "0xa28110bd092c957d9e61183ce7e84a3b9c07474dcdfe4419473302f9ba38640e"
     ]
   },
   "troveManager": {
@@ -33,7 +34,8 @@
   "activePool": {
     "address": "0x2518bfFEfB36cC412E6A3784A270B3BD5F76caC4",
     "txHashes": [
-      "0x5660dc5fe5f29bbc2a71a7e52bc28d0b7a194ad760a29ff23b3fd84d9ae2ab14"
+      "0x5660dc5fe5f29bbc2a71a7e52bc28d0b7a194ad760a29ff23b3fd84d9ae2ab14",
+      "0xbeafa87f5b64bbdca93f8d9bbdb09387961fb02f639d01e9003aaea3a29341f2"
     ]
   },
   "stabilityPool": {
@@ -64,7 +66,8 @@
     "address": "0x9a01e0A43861627fA9805C4321131B89c1ba1D74",
     "txHashes": [
       "0xb4a76632761113ef273136922b9f1ea285e891c10d056ab1a44b981fa9360126",
-      "0xbd01a282e552cba01dd7900b90b01c18aaeffc0ead14f1596ae1549490788918"
+      "0xbd01a282e552cba01dd7900b90b01c18aaeffc0ead14f1596ae1549490788918",
+      "0xa81fb56f607966cce8ec1920fe4bd19678d8eb3285da18a3f7b6598e95181b3e"
     ]
   },
   "hintHelpers": {
@@ -77,7 +80,8 @@
     "address": "0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0",
     "txHashes": [
       "0x0028f7d06d5ae83acfced5cc5b4cafe0d363eb8b3115dc8d8e87e6106fecb30e",
-      "0xcd50fe2c47ddb3ef33980575409af73f9b3ab4f22a3c621cb53026bb6fa92a40"
+      "0xcd50fe2c47ddb3ef33980575409af73f9b3ab4f22a3c621cb53026bb6fa92a40",
+      "0x6e08679ec226ad9627dcba56e951ef139b5f0e5ab9f40375119191aa5f3c3008"
     ]
   },
   "unipool": {
