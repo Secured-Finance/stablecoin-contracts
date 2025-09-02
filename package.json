@@ -1,6 +1,6 @@
 {
   "name": "@secured-finance/stablecoin-contracts",
-  "version": "1.0.1-beta.0",
+  "version": "1.1.0",
   "description": "Secured Finance Stablecoin Contracts",
   "files": [
     "artifacts",
