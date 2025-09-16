@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thank you for proposing a feature for the USDFC stablecoin contracts!
-  - type: input
+  - type: textarea
     id: summary
     attributes:
       label: Summary
