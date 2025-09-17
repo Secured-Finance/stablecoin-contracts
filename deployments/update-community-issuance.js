@@ -1,4 +1,4 @@
-const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js");
+const { TimeValues: timeVals } = require("../utils/testHelpers.js");
 const hre = require("hardhat");
 const { EthersAdapter } = require("@safe-global/protocol-kit");
 

@@ -1,9 +1,6 @@
 const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js");
-const { dec, toBN } = th;
 const HardhatDeploymentHelper = require("../utils/hardhatDeploymentHelpers.js");
 const hre = require("hardhat");
-const { UniswapV2Factory } = require("./ABIs/UniswapV2Factory.js");
-const { UniswapV2Pair } = require("./ABIs/UniswapV2Pair.js");
 
 async function main(configParams) {
   const date = new Date();
@@ -12,8 +9,8 @@ async function main(configParams) {
   const mdh = new HardhatDeploymentHelper(configParams, deployerWallet);
   const deploymentState = mdh.loadPreviousDeployment();
 
-  const [protocolToken, lockupContractFactory] = await Promise.all(
-    ["ProtocolToken", "LockupContractFactory"].map(async (name) => {
+  const [protocolToken, communityIssuance, lockupContractFactory] = await Promise.all(
+    ["ProtocolToken", "CommunityIssuance", "LockupContractFactory"].map(async (name) => {
       const factory = await ethers.getContractFactory(name, deployerWallet);
       const deploymentKey = name.charAt(0).toLocaleLowerCase() + name.slice(1);
       return new ethers.Contract(
@@ -24,6 +21,7 @@ async function main(configParams) {
     }),
   );
 
+  const supplyStartTime = await communityIssuance.supplyStartTime();
   const oneYearFromDeployment = (Number(supplyStartTime) + timeVals.SECONDS_IN_ONE_YEAR).toString();
 
   // Deploy LockupContracts - one for each beneficiary
@@ -70,7 +68,7 @@ async function main(configParams) {
   // --- Lockup Contracts ---
   console.log("LOCKUP CONTRACT CHECKS");
   // Check lockup contracts exist for each beneficiary with correct unlock time
-  for (investor of Object.keys(lockupContracts)) {
+  for (const investor of Object.keys(lockupContracts)) {
     const lockupContract = lockupContracts[investor];
     // check LC references correct ProtocolToken
     const storedProtocolTokenAddr = await lockupContract.protocolToken();
@@ -83,7 +81,7 @@ async function main(configParams) {
     );
     // Check correct unlock time (1 yr from deployment)
     const unlockTime = await lockupContract.unlockTime();
-    assert.equal(oneYearFromDeployment, unlockTime);
+    assert.equal(oneYearFromDeployment, unlockTime.toString());
 
     console.table({
       beneficiary: investor,
