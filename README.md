@@ -35,6 +35,12 @@ $ npx hardhat run --network testnet deployments/deploy-mock-price-feed.js
 # Allocate tokens
 $ npx hardhat run --network mainnet deployments/allocate.js
 
+# Deploy lockup contracts
+$ npx hardhat run --network mainnet deployments/deploy-lockup-contracts.js
+
+# Update the token supply cap in CommunityIssuance
+$ npx hardhat run --network mainnet deployments/update-community-issuance.js
+
 # Change contract owners
 $ npx hardhat run --network mainnet deployments/change-owners.js
 
