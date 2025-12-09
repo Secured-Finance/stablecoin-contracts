@@ -99,6 +99,14 @@ $ docker run --rm --platform linux/amd64  -it -w /src -v `pwd`:/src mythril/myth
 - [Decurity | Mar 2025](./audits/2025-03-Decurity.pdf)
 - [Hexens | Aug 2025](./audits/2025-08-Hexens.pdf)
 
+## Deployed Contracts
+
+| Contract | Filecoin Mainnet | Filecoin Calibration Testnet |
+| -------- | ---------------- | ---------------------------- |
+| USDFC | [0x80B98d3aa09ffff255c3ba4A241111Ff1262F045](https://filfox.info/en/address/0x80B98d3aa09ffff255c3ba4A241111Ff1262F045) | [0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0](https://calibration.filfox.info/en/address/0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0) |
+
+For more details, see the [Contracts and Security](https://docs.secured.finance/usdfc-stablecoin/deployed-contracts) documentation.
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
