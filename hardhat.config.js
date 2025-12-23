@@ -5,6 +5,7 @@ require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("dotenv").config();
 
+require("./tasks/verify-blockscout.js");
 require("./tasks/verify-filfox.js");
 require("./tasks/verify-starboard.js");
 
