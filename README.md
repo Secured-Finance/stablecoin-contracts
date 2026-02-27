@@ -39,7 +39,7 @@ $ npx hardhat run --network mainnet deployments/allocate.js
 $ npx hardhat run --network mainnet deployments/deploy-lockup-contracts.js
 
 # Update the token supply cap in CommunityIssuance
-$ npx hardhat run --network mainnet deployments/update-community-issuance.js
+$ PROTOCOL_TOKEN_INCREASE_AMOUNT=1000000 npx hardhat run --network mainnet deployments/update-community-issuance.js
 
 # Change contract owners
 $ npx hardhat run --network mainnet deployments/change-owners.js
@@ -101,9 +101,9 @@ $ docker run --rm --platform linux/amd64  -it -w /src -v `pwd`:/src mythril/myth
 
 ## Deployed Contracts
 
-| Contract | Filecoin Mainnet | Filecoin Calibration Testnet |
-| -------- | ---------------- | ---------------------------- |
-| USDFC | [0x80B98d3aa09ffff255c3ba4A241111Ff1262F045](https://filfox.info/en/address/0x80B98d3aa09ffff255c3ba4A241111Ff1262F045) | [0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0](https://calibration.filfox.info/en/address/0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0) |
+| Contract | Filecoin Mainnet                                                                                                        | Filecoin Calibration Testnet                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| USDFC    | [0x80B98d3aa09ffff255c3ba4A241111Ff1262F045](https://filfox.info/en/address/0x80B98d3aa09ffff255c3ba4A241111Ff1262F045) | [0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0](https://calibration.filfox.info/en/address/0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0) |
 
 For more details, see the [Contracts and Security](https://docs.secured.finance/usdfc-stablecoin/deployed-contracts) documentation.
 

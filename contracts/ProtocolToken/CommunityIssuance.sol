@@ -6,12 +6,14 @@ import "../Interfaces/IProtocolToken.sol";
 import "../Interfaces/ICommunityIssuance.sol";
 import "../Dependencies/OpenZeppelin/access/OwnableUpgradeable.sol";
 import "../Dependencies/OpenZeppelin/math/SafeMath.sol";
+import "../Dependencies/OpenZeppelin/token/ERC20/SafeERC20.sol";
 import "../Dependencies/BaseMath.sol";
 import "../Dependencies/ProtocolMath.sol";
 import "../Dependencies/CheckContract.sol";
 
 contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContract, BaseMath {
     using SafeMath for uint;
+    using SafeERC20 for IERC20;
 
     // --- Data ---
 
@@ -38,7 +40,7 @@ contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContr
     // The community ProtocolToken supply cap is the current balance of the Community Issuance contract.
     uint public override protocolTokenSupplyCap;
 
-    IProtocolToken public protocolToken;
+    IERC20 public protocolToken;
 
     address public stabilityPoolAddress;
 
@@ -70,19 +72,18 @@ contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContr
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
     }
 
-    function updateProtocolTokenSupplyCap() external onlyOwner {
-        uint newProtocolTokenSupplyCap = protocolToken.balanceOf(address(this));
+    function increaseProtocolTokenSupplyCap(uint256 amount) external onlyOwner {
+        require(amount > 0, "CommunityIssuance: Amount must be greater than zero");
 
-        require(
-            newProtocolTokenSupplyCap != protocolTokenSupplyCap,
-            "CommunityIssuance: supply cap not changed"
-        );
+        bool isFirstFunding = (protocolTokenSupplyCap == 0);
+        protocolToken.safeTransferFrom(msg.sender, address(this), amount);
+        protocolTokenSupplyCap = protocolTokenSupplyCap.add(amount);
 
-        protocolTokenSupplyCap = newProtocolTokenSupplyCap;
-        totalProtocolTokenIssued = 0;
-        supplyStartTime = block.timestamp;
+        if (isFirstFunding) {
+            supplyStartTime = block.timestamp;
+        }
 
-        emit ProtocolTokenSupplyCapUpdated(protocolTokenSupplyCap);
+        emit ProtocolTokenSupplyCapIncreased(protocolTokenSupplyCap, amount);
     }
 
     function issueProtocolToken() external override returns (uint) {
