@@ -25,13 +25,17 @@ async function main(configParams) {
     }),
   );
 
-  const newProtocolTokenSupplyCap = await protocolToken.balanceOf(communityIssuance.address);
-  const protocolTokenSupplyCap = await communityIssuance.protocolTokenSupplyCap();
+  const protocolTokenIncreaseAmount = process.env.PROTOCOL_TOKEN_INCREASE_AMOUNT;
 
-  if (newProtocolTokenSupplyCap.eq(protocolTokenSupplyCap)) {
-    console.log("Protocol token supply cap has not changed.");
+  if (!protocolTokenIncreaseAmount) {
+    console.error("Error: PROTOCOL_TOKEN_INCREASE_AMOUNT environment variable is required.");
     return;
   }
+
+  const amountToIncrease = ethers.utils.parseUnits(protocolTokenIncreaseAmount, 18);
+  console.log(
+    `Increasing protocol token supply cap by: ${protocolTokenIncreaseAmount} tokens (${amountToIncrease} wei)`,
+  );
 
   const owner = await communityIssuance.owner();
 
@@ -43,21 +47,44 @@ async function main(configParams) {
     const proposal = await MultisigProposal.create(adapter, multisig);
 
     await proposal.add(
+      protocolToken.address,
+      protocolToken.interface.encodeFunctionData("approve", [
+        communityIssuance.address,
+        amountToIncrease,
+      ]),
+    );
+
+    await proposal.add(
       communityIssuance.address,
-      communityIssuance.interface.encodeFunctionData("updateProtocolTokenSupplyCap", []),
+      communityIssuance.interface.encodeFunctionData("increaseProtocolTokenSupplyCap", [
+        amountToIncrease,
+      ]),
     );
 
     await proposal.submit();
   } else {
-    await mdh.sendAndWaitForTransaction(communityIssuance.updateProtocolTokenSupplyCap());
+    // Approve the CommunityIssuance contract to transfer tokens from the deployer
+    await mdh.sendAndWaitForTransaction(
+      protocolToken.approve(communityIssuance.address, amountToIncrease),
+    );
+    console.log(`Approved CommunityIssuance to transfer ${protocolTokenIncreaseAmount} tokens`);
+
+    await mdh.sendAndWaitForTransaction(
+      communityIssuance.increaseProtocolTokenSupplyCap(amountToIncrease),
+    );
 
     let supplyStartTime = await communityIssuance.supplyStartTime();
-    console.log(`supply start time: ${supplyStartTime}`);
+    console.log(`Supply start time: ${supplyStartTime}`);
+
+    const protocolTokenSupplyCap = await communityIssuance.protocolTokenSupplyCap();
+    console.log(
+      `New protocol token supply cap: ${ethers.utils.formatUnits(protocolTokenSupplyCap, 18)}`,
+    );
 
     const oneYearFromDeployment = (
       Number(supplyStartTime) + timeVals.SECONDS_IN_ONE_YEAR
     ).toString();
-    console.log(`time oneYearFromDeployment: ${oneYearFromDeployment}`);
+    console.log(`Time oneYearFromDeployment: ${oneYearFromDeployment}`);
   }
 }
 

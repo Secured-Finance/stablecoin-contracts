@@ -565,11 +565,26 @@ class DeploymentHelper {
   }
 
   static async allocateProtocolToken(protocolTokenContracts, allocation) {
-    const accounts = allocation.map((a) => a.address);
+    let communityIssuanceAllocation;
+    const { communityIssuance, protocolToken } = protocolTokenContracts;
+
+    const owner = await communityIssuance.owner();
+    const accounts = allocation.map((a) => {
+      if (a.address === communityIssuance.address) {
+        communityIssuanceAllocation = a.amount;
+        return owner;
+      } else {
+        return a.address;
+      }
+    });
     const amounts = allocation.map((a) => a.amount);
 
-    await protocolTokenContracts.protocolToken.triggerInitialAllocation(accounts, amounts);
-    await protocolTokenContracts.communityIssuance.updateProtocolTokenSupplyCap();
+    await protocolToken.triggerInitialAllocation(accounts, amounts);
+
+    if (!!communityIssuanceAllocation) {
+      await protocolToken.approve(communityIssuance.address, communityIssuanceAllocation);
+      await communityIssuance.increaseProtocolTokenSupplyCap(communityIssuanceAllocation);
+    }
   }
 
   static async computeContractAddresses(deployer, transactionCount, count) {

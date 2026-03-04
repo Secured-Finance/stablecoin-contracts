@@ -77,7 +77,7 @@ contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
     assert.equal(communityProtocolTokenSupply, "0");
 
     allocation = [
-      { address: multisig.address, amount: toBN(dec(67000000, 18)) },
+      { address: owner.address, amount: toBN(dec(67000000, 18)) },
       { address: lpRewardsAddress.address, amount: toBN(dec(1000000, 18)) },
       {
         address: protocolTokenContracts.communityIssuance.address,
@@ -204,14 +204,13 @@ contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
     const totalProtocolTokenIssuedBefore = await communityIssuance.totalProtocolTokenIssued();
     const supplyStartTimeBefore = await communityIssuance.supplyStartTime();
 
-    await protocolToken
-      .connect(multisig)
-      .transfer(communityIssuance.address, toBN(dec(40000000, 18)).sub(communityIssuanceBalance));
-    await communityIssuance.updateProtocolTokenSupplyCap();
+    const additionalAllocation = toBN(dec(40000000, 18));
+    await protocolToken.approve(communityIssuance.address, additionalAllocation);
+    await communityIssuance.increaseProtocolTokenSupplyCap(additionalAllocation);
 
     const protocolTokenSupplyCapAfter = await communityIssuance.protocolTokenSupplyCap();
-    const totalProtocolTokenIssuedAfter = await communityIssuance.totalProtocolTokenIssued();
     const supplyStartTimeAfter = await communityIssuance.supplyStartTime();
+    const initialAllocation = allocation[2].amount;
 
     assert.equal(protocolTokenSupplyCapBefore, dec(32000000, 18));
     assert.equal(
@@ -219,23 +218,25 @@ contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
       protocolTokenSupplyCapBefore.toString(),
     );
     assert.equal(totalProtocolTokenIssuedBefore, protocolTokenGain.toString());
-    assert.equal(protocolTokenSupplyCapAfter, dec(40000000, 18));
-    assert.equal(totalProtocolTokenIssuedAfter, "0");
-    assert.isTrue(supplyStartTimeAfter.gt(supplyStartTimeBefore));
+    assert.equal(
+      protocolTokenSupplyCapAfter.toString(),
+      initialAllocation.add(additionalAllocation).toString(),
+    );
+    assert.isTrue(supplyStartTimeAfter.eq(supplyStartTimeBefore));
   });
 
-  it("updateProtocolTokenSupplyCap(), reverts if called multiple times without any changes", async () => {
+  it("increaseProtocolTokenSupplyCap(), reverts if called multiple times without any changes", async () => {
     await deploymentHelper.allocateProtocolToken(protocolTokenContracts, allocation);
 
     await assertRevert(
-      communityIssuance.updateProtocolTokenSupplyCap(),
-      "CommunityIssuance: supply cap not changed",
+      communityIssuance.increaseProtocolTokenSupplyCap("0"),
+      "CommunityIssuance: Amount must be greater than zero",
     );
   });
 
-  it("updateProtocolTokenSupplyCap(): reverts if caller is not owner", async () => {
+  it("increaseProtocolTokenSupplyCap(): reverts if caller is not owner", async () => {
     await assertRevert(
-      communityIssuance.connect(A).updateProtocolTokenSupplyCap(),
+      communityIssuance.connect(A).increaseProtocolTokenSupplyCap("1"),
       "Ownable: caller is not the owner",
     );
   });
