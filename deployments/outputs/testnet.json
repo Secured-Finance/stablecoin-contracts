@@ -105,7 +105,8 @@
   "communityIssuance": {
     "address": "0x3e6dB20b3157619aF17F86FB38045Ee1970Ec022",
     "txHashes": [
-      "0xed7dc90da3562be1b2a14e61480081533fdfc2dfb904b34678100bf21ecae650"
+      "0xed7dc90da3562be1b2a14e61480081533fdfc2dfb904b34678100bf21ecae650",
+      "0xdba685aac162f13a45a26872e69d3ba5971d1125c01543d55edbafecf7016331"
     ]
   },
   "protocolToken": {
