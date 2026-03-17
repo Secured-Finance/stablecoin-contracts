@@ -802,27 +802,27 @@ contract("During the initial lockup period", async () => {
       // Check deployments reverted
       await assertRevert(
         directDeploymentTxPromise_1,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         directDeploymentTxPromise_2,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         directDeploymentTxPromise_3,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         factoryDploymentTxPromise_1,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         factoryDploymentTxPromise_2,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         factoryDploymentTxPromise_3,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
     });
   });
