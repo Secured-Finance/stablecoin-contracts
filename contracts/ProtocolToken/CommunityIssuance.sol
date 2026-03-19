@@ -37,7 +37,9 @@ contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContr
      */
     uint public constant ISSUANCE_FACTOR = 999998681227695000;
 
-    // The community ProtocolToken supply cap is the current balance of the Community Issuance contract.
+    // Emission cap for the current epoch.
+    // When the owner charges additional tokens, the previous epoch is settled and the new epoch cap is
+    // set to: remaining unissued amount from the previous epoch + newly added amount.
     uint public override protocolTokenSupplyCap;
 
     IERC20 public protocolToken;
@@ -45,6 +47,9 @@ contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContr
     address public stabilityPoolAddress;
 
     uint public totalProtocolTokenIssued;
+    // Cumulative issued amount before the current epoch (offset for emission calculation)
+    uint public issuedOffset;
+
     uint public supplyStartTime;
 
     constructor() initializer {}
@@ -72,26 +77,45 @@ contract CommunityIssuance is ICommunityIssuance, OwnableUpgradeable, CheckContr
         emit StabilityPoolAddressChanged(_stabilityPoolAddress);
     }
 
-    function increaseProtocolTokenSupplyCap(uint256 amount) external onlyOwner {
-        require(amount > 0, "CommunityIssuance: Amount must be greater than zero");
+    function startNewEmissionEpoch(uint256 additionalAmount) external onlyOwner {
+        require(additionalAmount > 0, "CommunityIssuance: Amount must be greater than zero");
 
         bool isFirstFunding = (protocolTokenSupplyCap == 0);
-        protocolToken.safeTransferFrom(msg.sender, address(this), amount);
-        protocolTokenSupplyCap = protocolTokenSupplyCap.add(amount);
+        protocolToken.safeTransferFrom(msg.sender, address(this), additionalAmount);
 
+        // If this is not the first funding, settle issuance up to "now"
+        // so that the previous epoch is fully accounted for.
         if (isFirstFunding) {
-            supplyStartTime = block.timestamp;
+            issuedOffset = 0;
+            protocolTokenSupplyCap = additionalAmount;
+        } else {
+            _issueProtocolToken();
+
+            uint currentEpochIssued = totalProtocolTokenIssued.sub(issuedOffset);
+            uint remainingUnissued = protocolTokenSupplyCap.sub(currentEpochIssued);
+
+            issuedOffset = totalProtocolTokenIssued;
+
+            // Start a new epoch:
+            // new cap = old remaining unissued + newly added amount
+            protocolTokenSupplyCap = remainingUnissued.add(additionalAmount);
         }
 
-        emit ProtocolTokenSupplyCapIncreased(protocolTokenSupplyCap, amount);
+        supplyStartTime = block.timestamp;
+
+        emit NewEmissionEpochStarted(protocolTokenSupplyCap, additionalAmount, issuedOffset);
     }
 
     function issueProtocolToken() external override returns (uint) {
         _requireCallerIsStabilityPool();
 
-        uint latestTotalProtocolTokenIssued = protocolTokenSupplyCap
-            .mul(_getCumulativeIssuanceFraction())
-            .div(DECIMAL_PRECISION);
+        return _issueProtocolToken();
+    }
+
+    function _issueProtocolToken() internal returns (uint) {
+        uint latestTotalProtocolTokenIssued = issuedOffset.add(
+            protocolTokenSupplyCap.mul(_getCumulativeIssuanceFraction()).div(DECIMAL_PRECISION)
+        );
         uint issuance = latestTotalProtocolTokenIssued.sub(totalProtocolTokenIssued);
 
         totalProtocolTokenIssued = latestTotalProtocolTokenIssued;

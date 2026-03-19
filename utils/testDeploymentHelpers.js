@@ -583,7 +583,7 @@ class DeploymentHelper {
 
     if (!!communityIssuanceAllocation) {
       await protocolToken.approve(communityIssuance.address, communityIssuanceAllocation);
-      await communityIssuance.increaseProtocolTokenSupplyCap(communityIssuanceAllocation);
+      await communityIssuance.startNewEmissionEpoch(communityIssuanceAllocation);
     }
   }
 
