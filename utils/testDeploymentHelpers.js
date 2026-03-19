@@ -581,9 +581,9 @@ class DeploymentHelper {
 
     await protocolToken.triggerInitialAllocation(accounts, amounts);
 
-    if (!!communityIssuanceAllocation) {
+    if (communityIssuanceAllocation && !communityIssuanceAllocation.isZero()) {
       await protocolToken.approve(communityIssuance.address, communityIssuanceAllocation);
-      await communityIssuance.increaseProtocolTokenSupplyCap(communityIssuanceAllocation);
+      await communityIssuance.startNewEmissionEpoch(communityIssuanceAllocation);
     }
   }
 
