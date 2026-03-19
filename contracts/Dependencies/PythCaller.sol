@@ -31,11 +31,12 @@ contract PythCaller is AggregatorV3Interface {
 
         // refund remaining eth
         (bool success, ) = payable(msg.sender).call{value: address(this).balance}("");
-        require(success, "PythAggregator: REFUND_FAILED");
+        require(success, "PythCaller: refund failed");
     }
 
     function decimals() public view override returns (uint8) {
         IPyth.Price memory price = pyth.getPriceUnsafe(priceId);
+        require(price.expo < 0 && price.expo >= -18, "PythCaller: expo out of range");
         return uint8(-1 * int8(price.expo));
     }
 
