@@ -28,7 +28,9 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
 
     [deployer, A, B, C, D, E, F, G, H, I, J] = signers;
     [lpRewardsAddress, multisig] = signers.slice(998, 1000);
+  });
 
+  const deploy = async () => {
     await hre.network.provider.send("hardhat_reset");
 
     const transactionCount = await deployer.getTransactionCount();
@@ -42,6 +44,11 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
       cpContracts,
     );
 
+    protocolToken = protocolTokenContracts.protocolToken;
+    lockupContractFactory = protocolTokenContracts.lockupContractFactory;
+  };
+
+  const allocateProtocolToken = async () => {
     const allocation = [
       { address: multisig.address, amount: toBN(dec(67000000, 18)) },
       { address: lpRewardsAddress.address, amount: toBN(dec(1000000, 18)) },
@@ -52,18 +59,20 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
     ];
     await deploymentHelper.allocateProtocolToken(protocolTokenContracts, allocation);
 
-    protocolToken = protocolTokenContracts.protocolToken;
-    lockupContractFactory = protocolTokenContracts.lockupContractFactory;
-
     oneYearFromAllocation = await th.getTimeFromAllocation(
       protocolToken,
       timeValues.SECONDS_IN_ONE_YEAR,
     );
-  });
+  };
 
   // --- LCs ---
 
   describe("Deploying LCs", async () => {
+    before(async () => {
+      await deploy();
+      await allocateProtocolToken();
+    });
+
     it("ProtocolToken Deployer can deploy LCs through the Factory", async () => {
       // ProtocolToken deployer deploys LCs
       const LCDeploymentTx_A = await lockupContractFactory
@@ -333,7 +342,7 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
       assert.isTrue(unlockTime_C.eq(toBN(dec(20, 18))));
     });
 
-    it("LC deployment through the Factory reverts when the unlockTime is < 1 year from system deployment", async () => {
+    it("LC deployment through the Factory reverts when the unlockTime is < 1 year from allocation start¸", async () => {
       const nearlyOneYear = toBN(oneYearFromAllocation).sub(toBN("60")); // 1 minute short of 1 year
 
       // Deploy 3 LCs through factory
@@ -350,23 +359,23 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
       // Confirm contract deployments revert
       await assertRevert(
         LCDeploymentPromise_A,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         LCDeploymentPromise_B,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         LCDeploymentPromise_C,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
     });
 
-    it("Direct deployment of LC reverts when the unlockTime is < 1 year from system deployment", async () => {
+    it("Direct deployment of LC reverts when the unlockTime is < 1 year from allocation start¸", async () => {
       const nearlyOneYear = toBN(oneYearFromAllocation).sub(toBN("60")); // 1 minute short of 1 year
       const lockupContractFactory = await deploymentHelper.getFactory("LockupContract");
 
-      // Deploy 3 LCs directly with unlockTime < 1 year from system deployment
+      // Deploy 3 LCs directly with unlockTime < 1 year from allocation start¸
       const LCDeploymentPromise_A = lockupContractFactory
         .connect(deployer)
         .deploy(protocolToken.address, A.address, nearlyOneYear);
@@ -380,15 +389,15 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
       // Confirm contract deployments revert
       await assertRevert(
         LCDeploymentPromise_A,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         LCDeploymentPromise_B,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
       await assertRevert(
         LCDeploymentPromise_C,
-        "LockupContract: unlock time must be at least one year after system deployment",
+        "LockupContract: unlock time must be at least one year after allocation start¸",
       );
     });
 
@@ -401,7 +410,28 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
     });
   });
 
+  describe("Deploying LCs without token allocation", async () => {
+    before(async () => {
+      await deploy();
+    });
+
+    it("LCs can't be deployed without token allocation", async () => {
+      const arbitraryUnlockTime = toBN("1");
+      await assertRevert(
+        lockupContractFactory
+          .connect(deployer)
+          .deployLockupContract(A.address, arbitraryUnlockTime),
+        "LockupContract: initial allocation has not been triggered",
+      );
+    });
+  });
+
   describe("Funding LCs", async () => {
+    before(async () => {
+      await deploy();
+      await allocateProtocolToken();
+    });
+
     it("ProtocolToken transfer from ProtocolToken deployer to their deployed LC increases the ProtocolToken balance of the LC", async () => {
       // Deploy 5 LCs
       const deployedLCtx_A = await lockupContractFactory
@@ -496,6 +526,11 @@ contract("Deploying and funding One Year Lockup Contracts", async () => {
   });
 
   describe("Withdrawal attempts on funded, inactive LCs immediately after funding", async () => {
+    before(async () => {
+      await deploy();
+      await allocateProtocolToken();
+    });
+
     it("Beneficiary can't withdraw from their funded LC", async () => {
       // Deploy 3 LCs
       const deployedLCtx_A = await lockupContractFactory
