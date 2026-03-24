@@ -8,8 +8,6 @@ const toBN = th.toBN;
 const getDifference = th.getDifference;
 const assertRevert = th.assertRevert;
 
-const GAS_PRICE = 10000000;
-
 contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
   let owner, A, B;
   let lpRewardsAddress, multisig;
@@ -206,11 +204,12 @@ contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
 
     const additionalAllocation = toBN(dec(40000000, 18));
     await protocolToken.approve(communityIssuance.address, additionalAllocation);
-    await communityIssuance.increaseProtocolTokenSupplyCap(additionalAllocation);
+    await communityIssuance.startNewEmissionEpoch(additionalAllocation);
 
     const protocolTokenSupplyCapAfter = await communityIssuance.protocolTokenSupplyCap();
     const supplyStartTimeAfter = await communityIssuance.supplyStartTime();
     const initialAllocation = allocation[2].amount;
+    const estimatedSupplyCap = initialAllocation.div(2).add(additionalAllocation);
 
     assert.equal(protocolTokenSupplyCapBefore, dec(32000000, 18));
     assert.equal(
@@ -219,24 +218,24 @@ contract("StabilityPool - ProtocolToken supply cap update tests", async () => {
     );
     assert.equal(totalProtocolTokenIssuedBefore, protocolTokenGain.toString());
     assert.equal(
-      protocolTokenSupplyCapAfter.toString(),
-      initialAllocation.add(additionalAllocation).toString(),
+      protocolTokenSupplyCapAfter.mul(10000).div(estimatedSupplyCap).toString(),
+      "10000",
     );
-    assert.isTrue(supplyStartTimeAfter.eq(supplyStartTimeBefore));
+    assert.isTrue(supplyStartTimeAfter.gt(supplyStartTimeBefore));
   });
 
-  it("increaseProtocolTokenSupplyCap(), reverts if called multiple times without any changes", async () => {
+  it("startNewEmissionEpoch(), reverts if called multiple times without any changes", async () => {
     await deploymentHelper.allocateProtocolToken(protocolTokenContracts, allocation);
 
     await assertRevert(
-      communityIssuance.increaseProtocolTokenSupplyCap("0"),
+      communityIssuance.startNewEmissionEpoch("0"),
       "CommunityIssuance: Amount must be greater than zero",
     );
   });
 
-  it("increaseProtocolTokenSupplyCap(): reverts if caller is not owner", async () => {
+  it("startNewEmissionEpoch(): reverts if caller is not owner", async () => {
     await assertRevert(
-      communityIssuance.connect(A).increaseProtocolTokenSupplyCap("1"),
+      communityIssuance.connect(A).startNewEmissionEpoch("1"),
       "Ownable: caller is not the owner",
     );
   });

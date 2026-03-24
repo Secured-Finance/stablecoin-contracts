@@ -56,9 +56,7 @@ async function main(configParams) {
 
     await proposal.add(
       communityIssuance.address,
-      communityIssuance.interface.encodeFunctionData("increaseProtocolTokenSupplyCap", [
-        amountToIncrease,
-      ]),
+      communityIssuance.interface.encodeFunctionData("startNewEmissionEpoch", [amountToIncrease]),
     );
 
     await proposal.submit();
@@ -69,9 +67,7 @@ async function main(configParams) {
     );
     console.log(`Approved CommunityIssuance to transfer ${protocolTokenIncreaseAmount} tokens`);
 
-    await mdh.sendAndWaitForTransaction(
-      communityIssuance.increaseProtocolTokenSupplyCap(amountToIncrease),
-    );
+    await mdh.sendAndWaitForTransaction(communityIssuance.startNewEmissionEpoch(amountToIncrease));
 
     let supplyStartTime = await communityIssuance.supplyStartTime();
     console.log(`Supply start time: ${supplyStartTime}`);
