@@ -34,7 +34,7 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
     uint public immutable ORACLE_TIMEOUT;
 
     // Maximum time period allowed since lastGoodPrice was updated, beyond which lastGoodPrice is considered too old.
-    // This should be longer than ORACLE_TIMEOUT to allow lastGoodPrice to remain valid when oracles are temporarily unavailable.
+    // This should be greater than or equal to ORACLE_TIMEOUT to allow lastGoodPrice to remain valid when oracles are temporarily unavailable.
     uint public immutable LAST_GOOD_PRICE_TIMEOUT;
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.

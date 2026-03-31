@@ -1043,7 +1043,7 @@ contract("PriceFeed", async () => {
 
   // Using Tellor, Tellor breaks
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by zero price: switch to bothOraclesSuspect", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockChainlink.setPrice(dec(999, 8));
 
@@ -1060,7 +1060,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by zero price: return last good price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockChainlink.setPrice(dec(999, 8));
 
@@ -1078,7 +1078,7 @@ contract("PriceFeed", async () => {
 
   // Using Tellor, Tellor breaks
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by call reverted: switch to bothOraclesSuspect", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await priceFeed.setLastGoodPrice(dec(123, 18));
 
@@ -1094,7 +1094,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by call reverted: return last good price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await priceFeed.setLastGoodPrice(dec(123, 18));
 
@@ -1111,7 +1111,7 @@ contract("PriceFeed", async () => {
 
   // Using Tellor, Tellor breaks
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by zero timestamp: switch to bothOraclesSuspect", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await priceFeed.setLastGoodPrice(dec(123, 18));
 
@@ -1127,7 +1127,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: Tellor breaks by zero timestamp: return last good price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await priceFeed.setLastGoodPrice(dec(123, 18));
 
@@ -1144,7 +1144,7 @@ contract("PriceFeed", async () => {
 
   // Using Tellor, Tellor freezes
   it("C2 usingTellorChainlinkUntrusted: Tellor freezes - remain usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockChainlink.setPrice(dec(999, 8));
 
@@ -1168,7 +1168,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: Tellor freezes - return last good price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockChainlink.setPrice(dec(999, 8));
 
@@ -1194,7 +1194,7 @@ contract("PriceFeed", async () => {
   // Using Tellor, both Chainlink & Tellor go live
 
   it("C2 usingTellorChainlinkUntrusted: both Tellor and Chainlink are live and <= 5% price difference - switch to chainlinkWorking", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice(dec(105, 8)); // price = 105: 5% difference from Chainlink
@@ -1206,7 +1206,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: both Tellor and Chainlink are live and <= 5% price difference - return Chainlink price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice(dec(105, 8)); // price = 105: 5% difference from Chainlink
@@ -1218,7 +1218,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: both Tellor and Chainlink are live and > 5% price difference - remain usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice("10500000001"); // price = 105.00000001: > 5% difference from Tellor
@@ -1230,7 +1230,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C2 usingTellorChainlinkUntrusted: both Tellor and Chainlink are live and > 5% price difference - return Tellor price", async () => {
-    priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
+    await priceFeed.setStatus(1); // status 1: using Tellor, Chainlink untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice("10500000001"); // price = 105.00000001: > 5% difference from Tellor
@@ -1244,7 +1244,7 @@ contract("PriceFeed", async () => {
   // --- Case 3: Both Oracles suspect
 
   it("C3 bothOraclesUntrusted: both Tellor and Chainlink are live and > 5% price difference remain bothOraclesSuspect", async () => {
-    priceFeed.setStatus(2); // status 2: both oracles untrusted
+    await priceFeed.setStatus(2); // status 2: both oracles untrusted
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1256,7 +1256,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C3 bothOraclesUntrusted: both Tellor and Chainlink are live and > 5% price difference, return last good price", async () => {
-    priceFeed.setStatus(2); // status 2: both oracles untrusted
+    await priceFeed.setStatus(2); // status 2: both oracles untrusted
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1270,7 +1270,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C3 bothOraclesUntrusted: both Tellor and Chainlink are live and <= 5% price difference, switch to chainlinkWorking", async () => {
-    priceFeed.setStatus(2); // status 2: both oracles untrusted
+    await priceFeed.setStatus(2); // status 2: both oracles untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice(dec(105, 8)); // price = 105: 5% difference from Tellor
@@ -1282,7 +1282,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C3 bothOraclesUntrusted: both Tellor and Chainlink are live and <= 5% price difference, return Chainlink price", async () => {
-    priceFeed.setStatus(2); // status 2: both oracles untrusted
+    await priceFeed.setStatus(2); // status 2: both oracles untrusted
 
     await mockTellor.setPrice(dec(100, 18)); // price = 100
     await mockChainlink.setPrice(dec(105, 8)); // price = 105: 5% difference from Tellor
@@ -1295,7 +1295,7 @@ contract("PriceFeed", async () => {
 
   // --- Case 4 ---
   it("C4 usingTellorChainlinkFrozen: when both Chainlink and Tellor break, switch to bothOraclesSuspect", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     // Both Chainlink and Tellor break with 0 price
     await mockChainlink.setPrice(0);
@@ -1308,7 +1308,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when both Chainlink and Tellor break, return last good price", async () => {
-    priceFeed.setStatus(2); // status 2: using tellor, chainlink frozen
+    await priceFeed.setStatus(2); // status 2: using tellor, chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1323,7 +1323,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink breaks and Tellor freezes, switch to usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1346,7 +1346,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink breaks and Tellor freezes, return last good price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1369,7 +1369,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink breaks and Tellor live, switch to usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1387,7 +1387,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink breaks and Tellor live, return Tellor price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1403,7 +1403,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with <5% price difference, switch back to chainlinkWorking", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1418,7 +1418,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with <5% price difference, return Chainlink current price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1433,7 +1433,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with >5% price difference, switch back to usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1448,7 +1448,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with >5% price difference, return Chainlink current price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1463,7 +1463,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with similar price, switch back to chainlinkWorking", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1478,7 +1478,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor is live with similar price, return Chainlink current price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1493,7 +1493,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor breaks, switch to usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1508,7 +1508,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink is live and Tellor breaks, return Chainlink current price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1523,7 +1523,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor breaks, switch to usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1547,7 +1547,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor broken, return last good price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1570,7 +1570,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor live, remain usingTellorChainlinkFrozen", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1595,7 +1595,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor live, return Tellor price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1620,7 +1620,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor freezes, remain usingTellorChainlinkFrozen", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1646,7 +1646,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C4 usingTellorChainlinkFrozen: when Chainlink still frozen and Tellor freezes, return last good price", async () => {
-    priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
+    await priceFeed.setStatus(3); // status 3: using Tellor, Chainlink frozen
 
     await priceFeed.setLastGoodPrice(dec(50, 18));
 
@@ -1673,7 +1673,7 @@ contract("PriceFeed", async () => {
 
   // --- Case 5 ---
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live and Tellor price >5% - no status change", async () => {
-    priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1688,7 +1688,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live and Tellor price >5% - return Chainlink price", async () => {
-    priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1703,7 +1703,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live and Tellor price within <5%, switch to chainlinkWorking", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1718,7 +1718,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live, Tellor price not within 5%, return Chainlink price", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1735,7 +1735,7 @@ contract("PriceFeed", async () => {
   // ---------
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live, <50% price deviation from previous, Tellor price not within 5%, remain on usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1749,7 +1749,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live, <50% price deviation from previous, Tellor price not within 5%, return Chainlink price", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1763,7 +1763,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live, <50% price deviation from previous, and Tellor is frozen, remain on usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1788,7 +1788,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink is live, <50% price deviation from previous, Tellor is frozen, return Chainlink price", async () => {
-    priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4:  using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1813,7 +1813,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink frozen, remain on usingChainlinkTellorUntrusted", async () => {
-    priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1835,7 +1835,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink frozen, return last good price", async () => {
-    priceFeed.setStatus(4); // status 4: using Chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using Chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(246, 18));
 
@@ -1857,7 +1857,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: when Chainlink breaks too, switch to bothOraclesSuspect", async () => {
-    priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(500, 18));
 
@@ -1873,7 +1873,7 @@ contract("PriceFeed", async () => {
   });
 
   it("C5 usingChainlinkTellorUntrusted: Chainlink breaks too, return last good price", async () => {
-    priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
+    await priceFeed.setStatus(4); // status 4: using chainlink, Tellor untrusted
 
     await priceFeed.setLastGoodPrice(dec(246, 18));
 
@@ -1911,7 +1911,7 @@ contract("PriceFeed", async () => {
   });
 
   it("lastGoodPrice timeout: should not revert when both oracles are frozen but within LAST_GOOD_PRICE_TIMEOUT", async () => {
-    priceFeed.setStatus(0); // status 0: chainlinkWorking
+    await priceFeed.setStatus(0); // status 0: chainlinkWorking
 
     // Set initial good price
     await mockChainlink.setPrice(dec(100, 8));
@@ -1929,7 +1929,7 @@ contract("PriceFeed", async () => {
   });
 
   it("lastGoodPrice timeout: should revert when both oracles broken and past LAST_GOOD_PRICE_TIMEOUT", async () => {
-    priceFeed.setStatus(1); // status 1: usingTellorChainlinkUntrusted
+    await priceFeed.setStatus(1); // status 1: usingTellorChainlinkUntrusted
 
     // Set initial good price
     await mockTellor.setPrice(dec(100, 18));
@@ -1969,7 +1969,7 @@ contract("PriceFeed", async () => {
   });
 
   it("lastGoodPrice timeout: should not revert when lastGoodPrice is within LAST_GOOD_PRICE_TIMEOUT", async () => {
-    priceFeed.setStatus(2); // status 2: bothOraclesUntrusted
+    await priceFeed.setStatus(2); // status 2: bothOraclesUntrusted
 
     // Set initial good price
     await mockChainlink.setPrice(dec(100, 8));
