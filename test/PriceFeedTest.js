@@ -71,6 +71,43 @@ contract("PriceFeed", async () => {
         ),
       );
     });
+
+    it("PriceFeed deployment should fail when LAST_GOOD_PRICE_TIMEOUT < ORACLE_TIMEOUT", async () => {
+      const priceFeedTesterFactory = await deploymentHelper.getFactory("PriceFeedTester");
+
+      await assertRevert(
+        deploymentHelper.deployProxy(
+          priceFeedTesterFactory,
+          [mockChainlink.address, tellorCaller.address],
+          [th.ORACLE_TIMEOUT, th.ORACLE_TIMEOUT - 1],
+        ),
+        "PriceFeed: LAST_GOOD_PRICE_TIMEOUT must be greater than or equal to ORACLE_TIMEOUT",
+      );
+    });
+
+    it("PriceFeed deployment should succeed when LAST_GOOD_PRICE_TIMEOUT == ORACLE_TIMEOUT", async () => {
+      const priceFeedTesterFactory = await deploymentHelper.getFactory("PriceFeedTester");
+
+      const priceFeedEqual = await deploymentHelper.deployProxy(
+        priceFeedTesterFactory,
+        [mockChainlink.address, tellorCaller.address],
+        [th.ORACLE_TIMEOUT, th.ORACLE_TIMEOUT],
+      );
+
+      assert.isTrue(priceFeedEqual.address !== undefined);
+    });
+
+    it("PriceFeed deployment should succeed when LAST_GOOD_PRICE_TIMEOUT > ORACLE_TIMEOUT", async () => {
+      const priceFeedTesterFactory = await deploymentHelper.getFactory("PriceFeedTester");
+
+      const priceFeedGreater = await deploymentHelper.deployProxy(
+        priceFeedTesterFactory,
+        [mockChainlink.address, tellorCaller.address],
+        [th.ORACLE_TIMEOUT, th.ORACLE_TIMEOUT + 1000],
+      );
+
+      assert.isTrue(priceFeedGreater.address !== undefined);
+    });
   });
 
   it("C1 Chainlink working: fetchPrice should return the correct price, taking into account the number of decimal digits on the aggregator", async () => {

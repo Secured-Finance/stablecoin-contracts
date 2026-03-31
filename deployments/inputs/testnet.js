@@ -41,7 +41,7 @@ const GAS_COMPENSATION = dec(20, 18); // 20 USDFC
 const MIN_NET_DEBT = dec(200, 18); // 200 USDFC
 const BOOTSTRAP_PERIOD = 24 * 60 * 60; // 1 day
 const ORACLE_TIMEOUT = 24 * 60 * 60; // 1 day
-const LAST_GOOD_PRICE_TIMEOUT = 3 * 24 * 60 * 60; // 3 days (should be longer than ORACLE_TIMEOUT)
+const LAST_GOOD_PRICE_TIMEOUT = 3 * 24 * 60 * 60; // 3 days
 
 module.exports = {
   externalAddrs,

@@ -71,6 +71,11 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
     uint public lastGoodPriceTimestamp;
 
     constructor(uint _oracleTimeout, uint _lastGoodPriceTimeout) initializer {
+        require(
+            _lastGoodPriceTimeout >= _oracleTimeout,
+            "PriceFeed: LAST_GOOD_PRICE_TIMEOUT must be greater than or equal to ORACLE_TIMEOUT"
+        );
+
         ORACLE_TIMEOUT = _oracleTimeout;
         LAST_GOOD_PRICE_TIMEOUT = _lastGoodPriceTimeout;
     }
