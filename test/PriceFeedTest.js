@@ -40,7 +40,7 @@ contract("PriceFeed", async () => {
     priceFeed = await deploymentHelper.deployProxy(
       priceFeedTesterFactory,
       [mockChainlink.address, tellorCaller.address],
-      [th.PRICE_FEED_TIMEOUT],
+      [th.ORACLE_TIMEOUT, th.LAST_GOOD_PRICE_TIMEOUT],
     );
   });
 
@@ -67,7 +67,7 @@ contract("PriceFeed", async () => {
         deploymentHelper.deployProxy(
           priceFeedTesterFactory,
           [dumbContract.address, dumbContract.address],
-          [th.PRICE_FEED_TIMEOUT],
+          [th.ORACLE_TIMEOUT, th.LAST_GOOD_PRICE_TIMEOUT],
         ),
       );
     });
@@ -1849,5 +1849,138 @@ contract("PriceFeed", async () => {
 
     const price = await priceFeed.lastGoodPrice();
     assert.equal(price.toString(), dec(246, 18));
+  });
+
+  // --- lastGoodPrice timeout tests ---
+
+  it("lastGoodPrice timeout: should revert when both oracles are broken and lastGoodPrice is too old", async () => {
+    // Set initial good price
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(100, 18));
+    await priceFeed.fetchPrice();
+
+    const price1 = await priceFeed.lastGoodPrice();
+    assert.equal(price1.toString(), dec(100, 18));
+
+    // Fast forward past LAST_GOOD_PRICE_TIMEOUT (24 hours + 1 second)
+    await th.fastForwardTime(86401, web3.currentProvider);
+
+    // Break both oracles
+    await mockChainlink.setUpdateTime(0);
+    await mockTellor.setUpdateTime(0);
+
+    // fetchPrice should revert because lastGoodPrice is too old
+    await assertRevert(priceFeed.fetchPrice(), "PriceFeed: lastGoodPrice is too old");
+  });
+
+  it("lastGoodPrice timeout: should not revert when both oracles are frozen but within LAST_GOOD_PRICE_TIMEOUT", async () => {
+    priceFeed.setStatus(0); // status 0: chainlinkWorking
+
+    // Set initial good price
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(100, 18));
+    await priceFeed.fetchPrice();
+
+    // Fast forward past oracle TIMEOUT (4 hours) but within LAST_GOOD_PRICE_TIMEOUT (24 hours)
+    await th.fastForwardTime(14401, web3.currentProvider);
+
+    // Both oracles are frozen but lastGoodPrice is still valid
+    // fetchPrice should succeed and return lastGoodPrice
+    await priceFeed.fetchPrice();
+    const price = await priceFeed.lastGoodPrice();
+    assert.equal(price.toString(), dec(100, 18));
+  });
+
+  it("lastGoodPrice timeout: should revert when both oracles broken and past LAST_GOOD_PRICE_TIMEOUT", async () => {
+    priceFeed.setStatus(1); // status 1: usingTellorChainlinkUntrusted
+
+    // Set initial good price
+    await mockTellor.setPrice(dec(100, 18));
+    await priceFeed.fetchPrice();
+
+    // Fast forward past LAST_GOOD_PRICE_TIMEOUT (24 hours + 1 second)
+    await th.fastForwardTime(86401, web3.currentProvider);
+
+    // Break both oracles
+    await mockChainlink.setUpdateTime(0);
+    await mockTellor.setUpdateTime(0);
+
+    // fetchPrice should revert because lastGoodPrice is too old
+    await assertRevert(priceFeed.fetchPrice(), "PriceFeed: lastGoodPrice is too old");
+  });
+
+  it("lastGoodPrice timeout: should return price when both oracles work even if lastGoodPrice is old", async () => {
+    // Set initial good price
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(100, 18));
+    await priceFeed.fetchPrice();
+
+    // Fast forward past LAST_GOOD_PRICE_TIMEOUT
+    await th.fastForwardTime(86401, web3.currentProvider);
+
+    // Update both oracles with new timestamps and prices
+    const now = await th.getLatestBlockTimestamp(web3);
+    await mockChainlink.setPrice(dec(150, 8));
+    await mockChainlink.setUpdateTime(now);
+    await mockTellor.setPrice(dec(150, 18));
+    await mockTellor.setUpdateTime(now);
+
+    // fetchPrice should succeed and return new price (lastGoodPrice age doesn't matter when oracles work)
+    await priceFeed.fetchPrice();
+    const price = await priceFeed.lastGoodPrice();
+    assert.equal(price.toString(), dec(150, 18));
+  });
+
+  it("lastGoodPrice timeout: should not revert when lastGoodPrice is within LAST_GOOD_PRICE_TIMEOUT", async () => {
+    priceFeed.setStatus(2); // status 2: bothOraclesUntrusted
+
+    // Set initial good price
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(100, 18));
+    await priceFeed.fetchPrice();
+
+    // Fast forward less than LAST_GOOD_PRICE_TIMEOUT (12 hours)
+    await th.fastForwardTime(43200, web3.currentProvider);
+
+    // Break both oracles
+    await mockChainlink.setUpdateTime(0);
+    await mockTellor.setUpdateTime(0);
+
+    // fetchPrice should succeed and return lastGoodPrice
+    await priceFeed.fetchPrice();
+    const price = await priceFeed.lastGoodPrice();
+    assert.equal(price.toString(), dec(100, 18));
+  });
+
+  it("lastGoodPrice timeout: should update lastGoodPriceTimestamp when storing new price", async () => {
+    // Set initial good price
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(100, 18));
+
+    const timestamp1 = await priceFeed.lastGoodPriceTimestamp();
+
+    await priceFeed.fetchPrice();
+
+    const timestamp2 = await priceFeed.lastGoodPriceTimestamp();
+
+    // Timestamp should be updated
+    assert.isTrue(timestamp2.gt(timestamp1));
+
+    // Fast forward 1 hour
+    await th.fastForwardTime(3600, web3.currentProvider);
+
+    // Update price again
+    const now = await th.getLatestBlockTimestamp(web3);
+    await mockChainlink.setPrice(dec(200, 8));
+    await mockChainlink.setUpdateTime(now);
+    await mockTellor.setPrice(dec(200, 18));
+    await mockTellor.setUpdateTime(now);
+
+    await priceFeed.fetchPrice();
+
+    const timestamp3 = await priceFeed.lastGoodPriceTimestamp();
+
+    // Timestamp should be updated again
+    assert.isTrue(timestamp3.gt(timestamp2));
   });
 });

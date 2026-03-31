@@ -213,7 +213,7 @@ class HardhatDeploymentHelper {
       "priceFeed",
       deploymentState,
       [pythCallerAddr, tellorCallerAddr],
-      [this.configParams.PRICE_FEED_TIMEOUT],
+      [this.configParams.ORACLE_TIMEOUT, this.configParams.LAST_GOOD_PRICE_TIMEOUT],
     );
 
     const sortedTroves = await this.loadOrDeployProxy(

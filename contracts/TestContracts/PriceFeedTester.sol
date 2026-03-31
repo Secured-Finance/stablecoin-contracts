@@ -5,7 +5,10 @@ pragma solidity 0.7.6;
 import "../PriceFeed.sol";
 
 contract PriceFeedTester is PriceFeed {
-    constructor(uint _timeout) PriceFeed(_timeout) {}
+    constructor(
+        uint _oracleTimeout,
+        uint _lastGoodPriceTimeout
+    ) PriceFeed(_oracleTimeout, _lastGoodPriceTimeout) {}
 
     function setLastGoodPrice(uint _lastGoodPrice) external {
         lastGoodPrice = _lastGoodPrice;

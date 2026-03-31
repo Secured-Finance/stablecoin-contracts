@@ -52,7 +52,7 @@ async function main(configParams) {
       await mdh.getFactory("MockPriceFeed"),
       "priceFeed",
       deploymentState,
-      [configParams.PRICE_FEED_TIMEOUT],
+      [configParams.ORACLE_TIMEOUT, configParams.LAST_GOOD_PRICE_TIMEOUT],
     );
 
     await proposal.add(
@@ -73,7 +73,8 @@ async function main(configParams) {
     await proposal.submit();
   } else {
     await mdh.upgradeProxy(await mdh.getFactory("MockPriceFeed"), "priceFeed", deploymentState, [
-      configParams.PRICE_FEED_TIMEOUT,
+      configParams.ORACLE_TIMEOUT,
+      configParams.LAST_GOOD_PRICE_TIMEOUT,
     ]);
 
     await mdh.sendAndWaitForTransaction(

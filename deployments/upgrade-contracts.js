@@ -21,7 +21,7 @@ async function main(configParams) {
   }
 
   const constructorArgsObj = {
-    PriceFeed: [configParams.PRICE_FEED_TIMEOUT],
+    PriceFeed: [configParams.ORACLE_TIMEOUT, configParams.LAST_GOOD_PRICE_TIMEOUT],
     TroveManager: [...constructorBaseArgs, configParams.BOOTSTRAP_PERIOD],
     StabilityPool: constructorBaseArgs,
     BorrowerOperations: constructorBaseArgs,
