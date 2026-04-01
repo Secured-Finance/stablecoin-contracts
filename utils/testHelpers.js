@@ -1534,7 +1534,8 @@ TestHelper._100pct = "1000000000000000000";
 TestHelper.latestRandomSeed = 31337;
 TestHelper.GAS_COMPENSATION = TestHelper.dec(200, 18);
 TestHelper.MIN_NET_DEBT = TestHelper.dec(1800, 18);
-TestHelper.PRICE_FEED_TIMEOUT = 4 * 60 * 60; // 4 hours
+TestHelper.ORACLE_TIMEOUT = 4 * 60 * 60; // 4 hours
+TestHelper.LAST_GOOD_PRICE_TIMEOUT = 24 * 60 * 60; // 24 hours (6x ORACLE_TIMEOUT)
 
 module.exports = {
   TestHelper,
