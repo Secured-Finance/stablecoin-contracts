@@ -17,4 +17,6 @@ interface IPriceFeed {
 
     // --- Function ---
     function fetchPrice() external returns (uint);
+
+    function fetchPriceView() external returns (uint);
 }
