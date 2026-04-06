@@ -1,8 +1,8 @@
 {
   "pythCaller": {
-    "address": "0x8C5D6c51a2E412992F71Faf6f71E528CB8620b66",
+    "address": "0xDD6eD206d347f42Ec34C7523AbD685ac30b19C8a",
     "txHashes": [
-      "0x02907f27922fc0a572d20ec9a59f6fbc6ba5751176c5a60a5c2f534787fdb052"
+      "0x1a9a480b076859701017e719bdd7b262e2353e9173b2fd0e0f2f4dd02b60b1fe"
     ]
   },
   "tellorCaller": {
@@ -15,7 +15,8 @@
     "address": "0xde054E1F2c94C11FEd5106F8f588fde9C3B30B87",
     "txHashes": [
       "0xbcf8541e14fa29c54fee561c3d4915e38a3e1373ccefbc91ae29ceb07056f67b",
-      "0x81b2220a08ed0aa720117e1716fa53a146990546f8b65498f6629f707cc78754"
+      "0x81b2220a08ed0aa720117e1716fa53a146990546f8b65498f6629f707cc78754",
+      "0xb91f25623f6ee6fd98472fbfeaafd6eea7996367c4a5e5614816bb6031d98b12"
     ]
   },
   "sortedTroves": {
@@ -106,7 +107,8 @@
     "address": "0x3e6dB20b3157619aF17F86FB38045Ee1970Ec022",
     "txHashes": [
       "0xed7dc90da3562be1b2a14e61480081533fdfc2dfb904b34678100bf21ecae650",
-      "0xdba685aac162f13a45a26872e69d3ba5971d1125c01543d55edbafecf7016331"
+      "0xdba685aac162f13a45a26872e69d3ba5971d1125c01543d55edbafecf7016331",
+      "0x509c117f8f357333347bdf5554ab5050d1b1409b5165018c6c38ec4ffa80b56c"
     ]
   },
   "protocolToken": {

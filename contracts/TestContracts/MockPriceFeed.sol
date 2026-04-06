@@ -23,8 +23,7 @@ contract MockPriceFeed is PriceFeed {
         _changeStatus(Status.chainlinkWorking);
     }
 
-    function setPriceAggregator(address _aggregator, int _price) external onlyOwner {
+    function setPriceAggregator(address _aggregator) external onlyOwner {
         priceAggregator = AggregatorV3Interface(_aggregator);
-        setPrice(_price);
     }
 }

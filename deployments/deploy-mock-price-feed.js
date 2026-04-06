@@ -65,11 +65,14 @@ async function main(configParams) {
 
     await proposal.add(
       mockPriceFeed.address,
-      mockPriceFeed.interface.encodeFunctionData("setPriceAggregator", [
-        mockAggregator.address,
-        price,
-      ]),
+      mockPriceFeed.interface.encodeFunctionData("setPriceAggregator", [mockAggregator.address]),
     );
+
+    await proposal.add(
+      mockPriceFeed.address,
+      mockPriceFeed.interface.encodeFunctionData("setPrice", [price]),
+    );
+
     await proposal.submit();
   } else {
     await mdh.upgradeProxy(await mdh.getFactory("MockPriceFeed"), "priceFeed", deploymentState, [
@@ -77,9 +80,8 @@ async function main(configParams) {
       configParams.LAST_GOOD_PRICE_TIMEOUT,
     ]);
 
-    await mdh.sendAndWaitForTransaction(
-      mockPriceFeed.setPriceAggregator(mockAggregator.address, price),
-    );
+    await mdh.sendAndWaitForTransaction(mockPriceFeed.setPriceAggregator(mockAggregator.address));
+    await mdh.sendAndWaitForTransaction(mockPriceFeed.setPrice(price));
   }
 }
 
