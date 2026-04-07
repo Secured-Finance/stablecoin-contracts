@@ -13,17 +13,17 @@ contract MockPriceFeed is PriceFeed {
     ) PriceFeed(_oracleTimeout, _lastGoodPriceTimeout) {}
 
     function setPrice(int _price) public onlyOwner {
-        MockAggregator mockPriceAggregator = MockAggregator(address(priceAggregator));
-
-        mockPriceAggregator.setPrice(_price);
-        mockPriceAggregator.setDecimals(18);
-        mockPriceAggregator.setLatestRoundId(1);
-        mockPriceAggregator.setUseBlockTimestamp(true);
+        MockAggregator(address(priceAggregator)).setPrice(_price);
 
         _changeStatus(Status.chainlinkWorking);
     }
 
     function setPriceAggregator(address _aggregator) external onlyOwner {
         priceAggregator = AggregatorV3Interface(_aggregator);
+        MockAggregator mockPriceAggregator = MockAggregator(address(_aggregator));
+
+        mockPriceAggregator.setDecimals(18);
+        mockPriceAggregator.setLatestRoundId(1);
+        mockPriceAggregator.setUseBlockTimestamp(true);
     }
 }

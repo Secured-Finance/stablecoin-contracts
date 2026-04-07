@@ -16,7 +16,8 @@
     "txHashes": [
       "0xbcf8541e14fa29c54fee561c3d4915e38a3e1373ccefbc91ae29ceb07056f67b",
       "0x81b2220a08ed0aa720117e1716fa53a146990546f8b65498f6629f707cc78754",
-      "0xb91f25623f6ee6fd98472fbfeaafd6eea7996367c4a5e5614816bb6031d98b12"
+      "0xb91f25623f6ee6fd98472fbfeaafd6eea7996367c4a5e5614816bb6031d98b12",
+      "0x1ff11dd43998caab7d7df6181908647b96e823c252b9766881c67b76d0246857"
     ]
   },
   "sortedTroves": {
@@ -124,9 +125,9 @@
     ]
   },
   "mockAggregator": {
-    "address": "0x8B58C729B09F67701c52255A8e99E3805749953b",
+    "address": "0x372Ac2aB576Da98290aD1e15538dc2E2F8e56c65",
     "txHashes": [
-      "0xc2db3d60659680f3ecb3dac974cf8a960872daaaad0543132bb5cd58020cffdd"
+      "0xae6e1313c5f2782b0b6a92094e19806875c5e19841dec5fbbdc9d9ab3fe7ec4e"
     ]
   }
 }
