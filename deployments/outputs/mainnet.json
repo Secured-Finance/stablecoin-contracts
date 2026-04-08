@@ -1,8 +1,8 @@
 {
   "pythCaller": {
-    "address": "0x7253dFF26255d3c1813F5391E7E3F8Df8F8CA345",
+    "address": "0xea7aB64F8271F01B0208084887DdD54fB2fE6A14",
     "txHashes": [
-      "0xdbcf6b03e8c64ace182d8ff9e4091e66e0c40f72ae788d6503ecb494fa522b22"
+      "0xa8f8e8b3e05bafbf8638ed9932f556f0eea8a134fdae69e3f7fdf421cf5e9679"
     ]
   },
   "tellorCaller": {
@@ -14,7 +14,9 @@
   "priceFeed": {
     "address": "0x80e651c9739C1ed15A267c11b85361780164A368",
     "txHashes": [
-      "0xcd5a78e5e21b56b3ce3d32ae8bcc6d61e48580cf8619a42397228062fbe9a361"
+      "0xcd5a78e5e21b56b3ce3d32ae8bcc6d61e48580cf8619a42397228062fbe9a361",
+      "0xc160da78989866b7cda3d8c685e220d8a2b147bda863961b53777f687891bf9f",
+      "0x7d3a07ede34ed006fced285e1faeddf70d41668622935539e3ed139bc52413df"
     ]
   },
   "sortedTroves": {
@@ -104,7 +106,8 @@
     "address": "0xCA468925813DA4FAf00C73C50ab5B7Ce8612F341",
     "txHashes": [
       "0xf78c58aa2195e019b445ec84f3cecbbb1cc085b54c2f218235dab263c0a9bc11",
-      "0xc8cff64b37fef2e6344aab17ce52d5b547f730208ccbf18a6211aad58a78b91c"
+      "0xc8cff64b37fef2e6344aab17ce52d5b547f730208ccbf18a6211aad58a78b91c",
+      "0xf2b189d138fbdc051bdef99db5f6f68467723cf0500f0a0d3a9a97ea2d2a9aa9"
     ]
   },
   "protocolToken": {
