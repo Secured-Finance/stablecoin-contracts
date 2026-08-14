@@ -164,19 +164,10 @@ class HardhatDeploymentHelper {
     return receipt;
   }
 
-  async deployOracleWrappers(deploymentState) {
-    const pythPriceFeedAddr = this.configParams.externalAddrs.PYTH_PRICE_FEED;
-    const pythPriceId = this.configParams.externalAddrs.PYTH_PRICE_ID;
+  async deployOracleContracts(deploymentState) {
     const tellorMasterAddr = this.configParams.externalAddrs.TELLOR_MASTER;
 
-    const pythCallerFactory = await this.getFactory("PythCaller");
     const tellorCallerFactory = await this.getFactory("TellorCaller");
-
-    const pythCaller = await this.loadOrDeploy(pythCallerFactory, "pythCaller", deploymentState, [
-      pythPriceFeedAddr,
-      pythPriceId,
-      "FIL / USD",
-    ]);
 
     const tellorCaller = await this.loadOrDeploy(
       tellorCallerFactory,
@@ -185,10 +176,10 @@ class HardhatDeploymentHelper {
       [tellorMasterAddr],
     );
 
-    return { pythCaller, tellorCaller };
+    return { tellorCaller };
   }
 
-  async deployProtocolCore(pythCallerAddr, tellorCallerAddr, deploymentState, cpContracts) {
+  async deployProtocolCore(priceAggregatorAddr, tellorCallerAddr, deploymentState, cpContracts) {
     const constructorBaseArgs = [
       this.configParams.GAS_COMPENSATION,
       this.configParams.MIN_NET_DEBT,
@@ -212,7 +203,7 @@ class HardhatDeploymentHelper {
       priceFeedFactory,
       "priceFeed",
       deploymentState,
-      [pythCallerAddr, tellorCallerAddr],
+      [priceAggregatorAddr, tellorCallerAddr],
       [this.configParams.ORACLE_TIMEOUT, this.configParams.LAST_GOOD_PRICE_TIMEOUT],
     );
 

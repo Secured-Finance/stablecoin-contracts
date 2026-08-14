@@ -12,12 +12,12 @@ import "./Dependencies/BaseMath.sol";
 import "./Dependencies/ProtocolMath.sol";
 
 /*
- * PriceFeed for mainnet deployment, to be connected to Pyth's live aggregator reference contract,
+ * PriceFeed for mainnet deployment, to be connected to a Chainlink-compatible price aggregator
  * and a wrapper contract TellorCaller, which connects to TellorMaster contract.
  *
- * The PriceFeed uses Pyth as primary oracle, and Tellor as fallback. It contains logic for
- * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
- * Pyth oracle.
+ * The PriceFeed uses the Chainlink-compatible aggregator as primary oracle, and Tellor as fallback.
+ * It contains logic for switching oracles based on oracle failures, timeouts, and conditions for
+ * returning to the primary oracle.
  */
 contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
     using SafeMath for uint256;
@@ -26,6 +26,9 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
 
     AggregatorV3Interface public priceAggregator;
     ITellorCaller public tellorCaller; // Wrapper contract that calls the Tellor system
+
+    event PriceAggregatorAddressChanged(address _newPriceAggregatorAddress);
+    event TellorCallerAddressChanged(address _newTellorCallerAddress);
 
     // Use to convert a price answer to an 18-digit precision uint
     uint public constant TARGET_DIGITS = 18;
@@ -109,6 +112,20 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
         );
 
         _storeChainlinkPrice(chainlinkResponse);
+
+        emit PriceAggregatorAddressChanged(_priceAggregatorAddress);
+        emit TellorCallerAddressChanged(_tellorCallerAddress);
+    }
+
+    /**
+     * @notice Replaces the primary oracle and Tellor fallback caller.
+     * @dev The primary oracle must return a valid, current price.
+     */
+    function updateOracleAddresses(
+        address _priceAggregatorAddress,
+        address _tellorCallerAddress
+    ) external onlyOwner {
+        _setAddresses(_priceAggregatorAddress, _tellorCallerAddress);
     }
 
     // --- Functions ---

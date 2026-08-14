@@ -2,11 +2,8 @@ const { TestHelper: th } = require("../../utils/testHelpers.js");
 const dec = th.dec;
 
 const externalAddrs = {
-  // https://docs.tellor.io/tellor/the-basics/contracts-reference#calibration
+  // https://github.com/tellor-io/telliot-core/blob/main/src/telliot_core/data/contract_directory.json
   TELLOR_MASTER: "0xb2CB696fE5244fB9004877e58dcB680cB86Ba444",
-  // https://docs.pyth.network/price-feeds/contract-addresses/evm
-  PYTH_PRICE_FEED: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
-  PYTH_PRICE_ID: "0x150ac9b959aee0051e4091f0ef5216d941f590e1c5e7f91cf7635b5c11628c0e",
   // https://github.com/sushiswap/v2-core/tree/master/deployments/filecoin
   UNISWAP_V2_FACTORY: undefined,
   UNISWAP_V2_ROUTER02: undefined,

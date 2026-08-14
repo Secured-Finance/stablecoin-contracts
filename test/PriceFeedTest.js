@@ -108,6 +108,75 @@ contract("PriceFeed", async () => {
 
       assert.isTrue(priceFeedGreater.address !== undefined);
     });
+
+    it("updateOracleAddresses: replaces both oracle dependencies and emits events", async () => {
+      const mockChainlinkFactory = await deploymentHelper.getFactory("MockAggregator");
+      const mockTellorFactory = await deploymentHelper.getFactory("MockTellor");
+      const tellorCallerFactory = await deploymentHelper.getFactory("TellorCaller");
+      const newAggregator = await mockChainlinkFactory.deploy();
+      const newMockTellor = await mockTellorFactory.deploy();
+      const newTellorCaller = await tellorCallerFactory.deploy(newMockTellor.address);
+      const now = await th.getLatestBlockTimestamp(web3);
+
+      await newAggregator.setLatestRoundId(1);
+      await newAggregator.setPrice(dec(101, 8));
+      await newAggregator.setUpdateTime(now);
+      await priceFeed.setLastGoodPrice(dec(100, 18));
+      await priceFeed.setStatus(2);
+
+      const tx = await priceFeed.updateOracleAddresses(
+        newAggregator.address,
+        newTellorCaller.address,
+      );
+      const receipt = await tx.wait();
+
+      assert.equal(await priceFeed.priceAggregator(), newAggregator.address);
+      assert.equal(await priceFeed.tellorCaller(), newTellorCaller.address);
+      assert.equal((await priceFeed.lastGoodPrice()).toString(), dec(101, 18));
+      assert.equal((await priceFeed.status()).toString(), "0");
+
+      const priceAggregatorEvent = receipt.events.find(
+        ({ event }) => event === "PriceAggregatorAddressChanged",
+      );
+      const tellorCallerEvent = receipt.events.find(
+        ({ event }) => event === "TellorCallerAddressChanged",
+      );
+      assert.equal(priceAggregatorEvent.args._newPriceAggregatorAddress, newAggregator.address);
+      assert.equal(tellorCallerEvent.args._newTellorCallerAddress, newTellorCaller.address);
+    });
+
+    it("updateOracleAddresses: reverts when called by a non-owner", async () => {
+      const [owner] = await ethers.getSigners();
+      const nonOwner = ethers.Wallet.createRandom().connect(ethers.provider);
+      await owner.sendTransaction({
+        to: nonOwner.address,
+        value: ethers.utils.parseEther("1"),
+      });
+
+      await assertRevert(
+        priceFeed
+          .connect(nonOwner)
+          .updateOracleAddresses(mockChainlink.address, tellorCaller.address),
+        "Ownable: caller is not the owner",
+      );
+    });
+
+    it("updateOracleAddresses: reverts when the new primary oracle is frozen", async () => {
+      const mockChainlinkFactory = await deploymentHelper.getFactory("MockAggregator");
+      const frozenAggregator = await mockChainlinkFactory.deploy();
+      const now = await th.getLatestBlockTimestamp(web3);
+
+      await frozenAggregator.setLatestRoundId(1);
+      await frozenAggregator.setPrice(dec(101, 8));
+      await frozenAggregator.setUpdateTime(now - th.ORACLE_TIMEOUT - 1);
+
+      await assertRevert(
+        priceFeed.updateOracleAddresses(frozenAggregator.address, tellorCaller.address),
+        "PriceFeed: Chainlink must be working and current",
+      );
+      assert.equal(await priceFeed.priceAggregator(), mockChainlink.address);
+      assert.equal(await priceFeed.tellorCaller(), tellorCaller.address);
+    });
   });
 
   it("C1 Chainlink working: fetchPrice should return the correct price, taking into account the number of decimal digits on the aggregator", async () => {

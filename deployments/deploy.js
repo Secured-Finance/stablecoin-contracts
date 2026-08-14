@@ -19,8 +19,18 @@ async function main(configParams) {
   deployerFILBalance = await ethers.provider.getBalance(deployerWallet.address);
   console.log(`deployer's FIL balance before deployments: ${deployerFILBalance}`);
 
-  const oracleWrapperContracts = await mdh.deployOracleWrappers(deploymentState);
-  await mdh.logContractObjects(oracleWrapperContracts);
+  const priceAggregatorAddr = process.env.PRICE_AGGREGATOR;
+  if (!priceAggregatorAddr || !ethers.utils.isAddress(priceAggregatorAddr)) {
+    throw new Error("Chainlink-compatible PRICE_AGGREGATOR address is not set");
+  }
+  const priceAggregator = await ethers.getContractAt(
+    "AggregatorV3Interface",
+    priceAggregatorAddr,
+    deployerWallet,
+  );
+
+  const oracleContracts = await mdh.deployOracleContracts(deploymentState);
+  await mdh.logContractObjects(oracleContracts);
 
   // Computed contracts address
   // Note: This contract list order is the same as the order in which the contracts are deployed.
@@ -65,8 +75,8 @@ async function main(configParams) {
 
   // Deploy core logic contracts
   const coreContracts = await mdh.deployProtocolCore(
-    oracleWrapperContracts.pythCaller.address,
-    oracleWrapperContracts.tellorCaller.address,
+    priceAggregator.address,
+    oracleContracts.tellorCaller.address,
     deploymentState,
     cpContracts,
   );
@@ -146,16 +156,15 @@ async function main(configParams) {
 
   // // --- TESTS AND CHECKS  ---
 
-  // Check oracle proxy prices ---
+  // Check oracle prices ---
 
   // Get latest price
-  let pythPriceResponse = await oracleWrapperContracts.pythCaller.latestRoundData();
-  console.log(`current Pyth price: ${pythPriceResponse[1]}`);
-  console.log(`current Pyth timestamp: ${pythPriceResponse[3]}`);
+  const primaryOracleResponse = await priceAggregator.latestRoundData();
+  console.log(`current primary oracle price: ${primaryOracleResponse[1]}`);
+  console.log(`current primary oracle timestamp: ${primaryOracleResponse[3]}`);
 
   // Check Tellor price directly (through our TellorCaller)
-  let tellorPriceResponse =
-    await oracleWrapperContracts.tellorCaller.callStatic.getTellorCurrentValue(); // id == 1: the FIL-USD request ID
+  let tellorPriceResponse = await oracleContracts.tellorCaller.callStatic.getTellorCurrentValue(); // id == 1: the FIL-USD request ID
   console.log(`current Tellor price: ${tellorPriceResponse[1]}`);
   console.log(`current Tellor timestamp: ${tellorPriceResponse[2]}`);
 
@@ -176,7 +185,8 @@ async function main(configParams) {
   th.logBN("Entire system coll", entireSystemColl);
 
   // TCR
-  const TCR = await coreContracts.troveManager.getTCR(pythPriceResponse[1]);
+  const currentPrice = await coreContracts.priceFeed.lastGoodPrice();
+  const TCR = await coreContracts.troveManager.getTCR(currentPrice);
   console.log(`TCR: ${TCR}`);
 
   // current borrowing rate
