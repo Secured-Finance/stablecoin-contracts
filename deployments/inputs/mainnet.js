@@ -2,6 +2,7 @@ const { TestHelper: th } = require("../../utils/testHelpers.js");
 const dec = th.dec;
 
 const externalAddrs = {
+  REDSTONE_PRICE_FEED: "0x434F8D17c0301cfEa143dba912972E24B827C968",
   // https://github.com/tellor-io/telliot-core/blob/main/src/telliot_core/data/contract_directory.json
   TELLOR_MASTER: "0x8cFc184c877154a8F9ffE0fe75649dbe5e2DBEbf",
   // https://github.com/sushiswap/v2-core/tree/master/deployments/filecoin
@@ -33,7 +34,7 @@ const GAS_COMPENSATION = dec(20, 18); // 20 USDFC
 const MIN_NET_DEBT = dec(200, 18); // 200 USDFC
 const BOOTSTRAP_PERIOD = 2 * 7 * 24 * 60 * 60; // 2 weeks
 const ORACLE_TIMEOUT = 16 * 60 * 60; // 16 hours
-const LAST_GOOD_PRICE_TIMEOUT = 24 * 60 * 60; // 2 days
+const LAST_GOOD_PRICE_TIMEOUT = 2 * 24 * 60 * 60; // 2 days
 
 module.exports = {
   externalAddrs,
