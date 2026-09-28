@@ -2,6 +2,7 @@ const { TestHelper: th } = require("../../utils/testHelpers.js");
 const dec = th.dec;
 
 const externalAddrs = {
+  REDSTONE_PRICE_FEED: "0xe1df239Ac22E8a873B2a4dF975C8dfc3249350e4",
   // https://github.com/tellor-io/telliot-core/blob/main/src/telliot_core/data/contract_directory.json
   TELLOR_MASTER: "0xb2CB696fE5244fB9004877e58dcB680cB86Ba444",
   // https://github.com/sushiswap/v2-core/tree/master/deployments/filecoin

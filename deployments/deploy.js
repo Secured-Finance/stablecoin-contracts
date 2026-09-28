@@ -19,13 +19,9 @@ async function main(configParams) {
   deployerFILBalance = await ethers.provider.getBalance(deployerWallet.address);
   console.log(`deployer's FIL balance before deployments: ${deployerFILBalance}`);
 
-  const priceAggregatorAddr = process.env.PRICE_AGGREGATOR;
-  if (!priceAggregatorAddr || !ethers.utils.isAddress(priceAggregatorAddr)) {
-    throw new Error("Chainlink-compatible PRICE_AGGREGATOR address is not set");
-  }
   const priceAggregator = await ethers.getContractAt(
     "AggregatorV3Interface",
-    priceAggregatorAddr,
+    configParams.externalAddrs.REDSTONE_PRICE_FEED,
     deployerWallet,
   );
 
