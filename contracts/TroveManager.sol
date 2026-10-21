@@ -1378,7 +1378,7 @@ contract TroveManager is TroveBase, OwnableUpgradeable, ReentrancyGuardUpgradeab
             return false;
         }
 
-        return (rewardSnapshots[_borrower].FIL < L_FIL);
+        return (rewardSnapshots[_borrower].FIL < L_FIL || rewardSnapshots[_borrower].debt < L_Debt);
     }
 
     // Return the Troves entire debt and coll, including pending rewards from redistributions.

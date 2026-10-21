@@ -62,4 +62,8 @@ contract TroveManagerTester is TroveManager {
         uint troveOwnersArrayLength = TroveOwners.length;
         _removeTroveOwner(_troveOwner, troveOwnersArrayLength);
     }
+
+    function unprotectedRedistributeDebtAndColl(uint _debt, uint _coll) external {
+        _redistributeDebtAndColl(activePool, defaultPool, _debt, _coll);
+    }
 }
