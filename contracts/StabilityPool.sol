@@ -644,8 +644,17 @@ contract StabilityPool is
             // If multiplying P by a non-zero product factor would reduce P below the scale boundary, increment the scale
         } else if (currentP.mul(newProductFactor).div(DECIMAL_PRECISION) < SCALE_FACTOR) {
             newP = currentP.mul(newProductFactor).mul(SCALE_FACTOR).div(DECIMAL_PRECISION);
-            currentScale = currentScaleCached.add(1);
-            emit ScaleUpdated(currentScale);
+            currentScaleCached = currentScaleCached.add(1);
+
+            // A very high-fraction offset can require two scale changes to keep P above SCALE_FACTOR.
+            // Recompute from the original operands to avoid compounding the first division's rounding loss.
+            if (newP < SCALE_FACTOR) {
+                newP = currentP.mul(newProductFactor).mul(SCALE_FACTOR ** 2).div(DECIMAL_PRECISION);
+                currentScaleCached = currentScaleCached.add(1);
+            }
+
+            currentScale = currentScaleCached;
+            emit ScaleUpdated(currentScaleCached);
         } else {
             newP = currentP.mul(newProductFactor).div(DECIMAL_PRECISION);
         }
