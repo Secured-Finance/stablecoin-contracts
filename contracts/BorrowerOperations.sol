@@ -46,6 +46,7 @@ contract BorrowerOperations is
 
     struct LocalVariables_adjustTrove {
         uint price;
+        IPriceFeed.PriceSource priceSource;
         uint collChange;
         uint netDebtChange;
         bool isCollIncrease;
@@ -62,6 +63,7 @@ contract BorrowerOperations is
 
     struct LocalVariables_openTrove {
         uint price;
+        IPriceFeed.PriceSource priceSource;
         uint debtTokenFee;
         uint netDebt;
         uint compositeDebt;
@@ -173,7 +175,8 @@ contract BorrowerOperations is
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, debtToken);
         LocalVariables_openTrove memory vars;
 
-        vars.price = priceFeed.fetchPrice();
+        (vars.price, vars.priceSource) = priceFeed.fetchPriceWithSource();
+        _requirePrimaryPrice(vars.priceSource);
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         _requireValidMaxFeePercentage(_maxFeePercentage, isRecoveryMode);
@@ -348,7 +351,7 @@ contract BorrowerOperations is
         ContractsCache memory contractsCache = ContractsCache(troveManager, activePool, debtToken);
         LocalVariables_adjustTrove memory vars;
 
-        vars.price = priceFeed.fetchPrice();
+        (vars.price, vars.priceSource) = priceFeed.fetchPriceWithSource();
         bool isRecoveryMode = _checkRecoveryMode(vars.price);
 
         if (_isDebtIncrease) {
@@ -358,6 +361,10 @@ contract BorrowerOperations is
         _requireSingularCollChange(_collWithdrawal);
         _requireNonZeroAdjustment(_collWithdrawal, _debtTokenChange);
         _requireTroveIsActive(contractsCache.troveManager, _borrower);
+
+        if (_collWithdrawal > 0 || _isDebtIncrease) {
+            _requirePrimaryPrice(vars.priceSource);
+        }
 
         // Confirm the operation is either a borrower adjusting their own trove, or a pure FIL transfer from the Stability Pool to a trove
         assert(
@@ -623,6 +630,13 @@ contract BorrowerOperations is
 
     function _requireAmountGreaterThanZero(uint _amount) internal pure {
         require(_amount != 0, "BorrowerOps: Amount must be greater than zero");
+    }
+
+    function _requirePrimaryPrice(IPriceFeed.PriceSource _priceSource) internal pure {
+        require(
+            _priceSource == IPriceFeed.PriceSource.primaryOracle,
+            "BorrowerOps: Risk-increasing operation requires primary price"
+        );
     }
 
     function _requireSingularCollChange(uint _collWithdrawal) internal view {

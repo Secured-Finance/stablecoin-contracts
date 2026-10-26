@@ -144,6 +144,14 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
      * Reverts if lastGoodPrice is older than LAST_GOOD_PRICE_TIMEOUT.
      */
     function fetchPrice() external override returns (uint price) {
+        (price, ) = _fetchPrice(false);
+    }
+
+    /**
+     * @notice Returns the latest price together with the oracle source actually used.
+     * @dev Consumers can use the source to restrict operations that must only rely on the primary oracle.
+     */
+    function fetchPriceWithSource() external override returns (uint price, PriceSource source) {
         return _fetchPrice(false);
     }
 
@@ -155,6 +163,14 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
      * Non-view function - it stores the last good price seen by the PriceFeed contract.
      */
     function fetchPriceView() external override returns (uint price) {
+        (price, ) = _fetchPrice(true);
+    }
+
+    /**
+     * @notice Returns the latest price and its source without reverting when lastGoodPrice is stale.
+     * @dev Like fetchPriceView(), this is non-view because fetching can update oracle state.
+     */
+    function fetchPriceWithSourceView() external override returns (uint price, PriceSource source) {
         return _fetchPrice(true);
     }
 
@@ -163,7 +179,7 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
      * Internal function that fetches price from oracles.
      * @param _allowStale If false, reverts when lastGoodPrice is older than LAST_GOOD_PRICE_TIMEOUT
      */
-    function _fetchPrice(bool _allowStale) internal returns (uint price) {
+    function _fetchPrice(bool _allowStale) internal returns (uint price, PriceSource source) {
         // Get current and previous price data from Chainlink, and current price data from Tellor
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
         TellorResponse memory tellorResponse = _getCurrentTellorResponse();
@@ -232,10 +248,10 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
                     return _storeChainlinkPrice(chainlinkResponse);
                 }
 
-                // If Tellor is live but the oracles differ too much in price, conclude that Chainlink's initial price deviation was
-                // an oracle failure. Switch to Tellor, and use Tellor price
-                _changeStatus(Status.usingTellorChainlinkUntrusted);
-                return _storeTellorPrice(tellorResponse);
+                // If Tellor is live but the oracles differ too much in price, there is no basis for deciding which oracle is
+                // accurate. Treat both oracles as untrusted and keep the last good price until they agree again.
+                _changeStatus(Status.bothOraclesUntrusted);
+                return _getLastGoodPrice(_allowStale);
             }
 
             // If Chainlink is working and Tellor is broken, remember Tellor is broken
@@ -376,6 +392,8 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
             // return Chainlink price (no status change)
             return _storeChainlinkPrice(chainlinkResponse);
         }
+
+        revert("PriceFeed: invalid status");
     }
 
     // --- Helper functions ---
@@ -451,11 +469,11 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
         return block.timestamp.sub(lastGoodPriceTimestamp) > LAST_GOOD_PRICE_TIMEOUT;
     }
 
-    function _getLastGoodPrice(bool _allowStale) internal view returns (uint) {
+    function _getLastGoodPrice(bool _allowStale) internal view returns (uint, PriceSource) {
         if (!_allowStale) {
             require(!_lastGoodPriceIsFrozen(), "PriceFeed: lastGoodPrice is too old");
         }
-        return lastGoodPrice;
+        return (lastGoodPrice, PriceSource.lastGoodPrice);
     }
 
     function _bothOraclesLiveAndUnbrokenAndSimilarPrice(
@@ -530,24 +548,26 @@ contract PriceFeed is OwnableUpgradeable, CheckContract, BaseMath, IPriceFeed {
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
-    function _storeTellorPrice(TellorResponse memory _tellorResponse) internal returns (uint) {
+    function _storeTellorPrice(
+        TellorResponse memory _tellorResponse
+    ) internal returns (uint, PriceSource) {
         // No need to scale Tellor price, as it is already in 18-digit precision
         uint tellorPrice = _tellorResponse.value;
         _storePrice(tellorPrice);
 
-        return tellorPrice;
+        return (tellorPrice, PriceSource.fallbackOracle);
     }
 
     function _storeChainlinkPrice(
         ChainlinkResponse memory _chainlinkResponse
-    ) internal returns (uint) {
+    ) internal returns (uint, PriceSource) {
         uint scaledChainlinkPrice = _scaleChainlinkPriceByDigits(
             uint256(_chainlinkResponse.answer),
             _chainlinkResponse.decimals
         );
         _storePrice(scaledChainlinkPrice);
 
-        return scaledChainlinkPrice;
+        return (scaledChainlinkPrice, PriceSource.primaryOracle);
     }
 
     // --- Oracle response wrapper functions ---

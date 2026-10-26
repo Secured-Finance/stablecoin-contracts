@@ -138,6 +138,132 @@ contract("BorrowerOperations", async () => {
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR();
     });
 
+    describe("non-primary price restrictions", async () => {
+      const FALLBACK_ORACLE = 1;
+      const LAST_GOOD_PRICE = 2;
+      const REVERT_MESSAGE = "BorrowerOps: Risk-increasing operation requires primary price";
+
+      it("openTrove(): reverts when using fallback or last good price", async () => {
+        await priceFeed.setPriceSource(FALLBACK_ORACLE);
+        await assertRevert(
+          borrowerOperations
+            .connect(alice)
+            .openTrove(th._100pct, dec(20000, 18), alice.address, alice.address, {
+              value: dec(40000, 18),
+            }),
+          REVERT_MESSAGE,
+        );
+
+        await priceFeed.setPriceSource(LAST_GOOD_PRICE);
+        await assertRevert(
+          borrowerOperations
+            .connect(bob)
+            .openTrove(th._100pct, dec(20000, 18), bob.address, bob.address, {
+              value: dec(40000, 18),
+            }),
+          REVERT_MESSAGE,
+        );
+      });
+
+      it("withdrawColl(): reverts when using fallback or last good price", async () => {
+        await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
+        await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } });
+
+        await priceFeed.setPriceSource(FALLBACK_ORACLE);
+        await assertRevert(
+          borrowerOperations.connect(alice).withdrawColl(dec(1, 18), alice.address, alice.address),
+          REVERT_MESSAGE,
+        );
+
+        await priceFeed.setPriceSource(LAST_GOOD_PRICE);
+        await assertRevert(
+          borrowerOperations.connect(bob).withdrawColl(dec(1, 18), bob.address, bob.address),
+          REVERT_MESSAGE,
+        );
+      });
+
+      it("withdrawDebtToken(): reverts when using fallback or last good price", async () => {
+        await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: alice } });
+        await openTrove({
+          ICR: toBN(dec(3, 18)),
+          extraDebtTokenAmount: dec(1000, 18),
+          extraParams: { from: bob },
+        });
+
+        await priceFeed.setPriceSource(FALLBACK_ORACLE);
+        await assertRevert(
+          borrowerOperations
+            .connect(alice)
+            .withdrawDebtToken(th._100pct, dec(100, 18), alice.address, alice.address),
+          REVERT_MESSAGE,
+        );
+
+        await priceFeed.setPriceSource(LAST_GOOD_PRICE);
+        await assertRevert(
+          borrowerOperations
+            .connect(bob)
+            .withdrawDebtToken(th._100pct, dec(100, 18), bob.address, bob.address),
+          REVERT_MESSAGE,
+        );
+      });
+
+      it("adjustTrove(): blocks debt increases and collateral withdrawals", async () => {
+        await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: alice } });
+        await openTrove({
+          ICR: toBN(dec(3, 18)),
+          extraDebtTokenAmount: dec(1000, 18),
+          extraParams: { from: bob },
+        });
+
+        await priceFeed.setPriceSource(FALLBACK_ORACLE);
+        await assertRevert(
+          borrowerOperations
+            .connect(alice)
+            .adjustTrove(th._100pct, 0, dec(100, 18), true, alice.address, alice.address, {
+              value: dec(10, 18),
+            }),
+          REVERT_MESSAGE,
+        );
+
+        await priceFeed.setPriceSource(LAST_GOOD_PRICE);
+        await assertRevert(
+          borrowerOperations
+            .connect(bob)
+            .adjustTrove(0, dec(1, 18), dec(100, 18), false, bob.address, bob.address),
+          REVERT_MESSAGE,
+        );
+      });
+
+      it("allows collateral additions and debt repayments with non-primary prices", async () => {
+        await openTrove({ ICR: toBN(dec(3, 18)), extraParams: { from: alice } });
+        await openTrove({
+          ICR: toBN(dec(3, 18)),
+          extraDebtTokenAmount: dec(1000, 18),
+          extraParams: { from: bob },
+        });
+
+        const aliceCollBefore = await troveManager.getTroveColl(alice.address);
+        await priceFeed.setPriceSource(FALLBACK_ORACLE);
+        await borrowerOperations
+          .connect(alice)
+          .addColl(alice.address, alice.address, { value: dec(1, 18) });
+        assert.equal(
+          (await troveManager.getTroveColl(alice.address)).toString(),
+          aliceCollBefore.add(toBN(dec(1, 18))).toString(),
+        );
+
+        const bobDebtBefore = await troveManager.getTroveDebt(bob.address);
+        await priceFeed.setPriceSource(LAST_GOOD_PRICE);
+        await borrowerOperations
+          .connect(bob)
+          .repayDebtToken(dec(100, 18), bob.address, bob.address);
+        assert.equal(
+          (await troveManager.getTroveDebt(bob.address)).toString(),
+          bobDebtBefore.sub(toBN(dec(100, 18))).toString(),
+        );
+      });
+    });
+
     it("addColl(): reverts when top-up would leave trove with ICR < MCR", async () => {
       // alice creates a Trove and adds first collateral
       await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });

@@ -611,7 +611,64 @@ contract("PriceFeed", async () => {
 
   // --- Chainlink price deviation ---
 
-  it("C1 chainlinkWorking: Chainlink price drop of >50%, switch to usingChainlinkTellorUntrusted", async () => {
+  describe("fetchPriceWithSource", async () => {
+    it("returns primaryOracle when the primary oracle price is used", async () => {
+      const [price, source] = await priceFeed.callStatic.fetchPriceWithSource();
+
+      assert.equal(price.toString(), dec(100, 18));
+      assert.equal(source.toString(), "0");
+    });
+
+    it("returns fallbackOracle when the Tellor price is used", async () => {
+      await mockChainlink.setLatestRoundId(0);
+
+      const [price, source] = await priceFeed.callStatic.fetchPriceWithSource();
+
+      assert.equal(price.toString(), dec(100, 18));
+      assert.equal(source.toString(), "1");
+    });
+
+    it("returns lastGoodPrice when neither oracle price is used", async () => {
+      await priceFeed.setLastGoodPrice(dec(200, 18));
+      await mockChainlink.setLatestRoundId(0);
+      await mockTellor.setPrice(0);
+
+      const [price, source] = await priceFeed.callStatic.fetchPriceWithSource();
+
+      assert.equal(price.toString(), dec(200, 18));
+      assert.equal(source.toString(), "2");
+    });
+
+    it("reports primaryOracle based on the returned price rather than the current status", async () => {
+      await mockTellor.setPrice(0);
+      await priceFeed.fetchPrice();
+      assert.equal(await priceFeed.status(), "4");
+
+      const [price, source] = await priceFeed.callStatic.fetchPriceWithSource();
+
+      assert.equal(price.toString(), dec(100, 18));
+      assert.equal(source.toString(), "0");
+    });
+
+    it("fetchPriceWithSourceView returns a stale last good price and its source without reverting", async () => {
+      await priceFeed.setLastGoodPrice(dec(200, 18));
+      await mockChainlink.setLatestRoundId(0);
+      await mockTellor.setPrice(0);
+      await th.fastForwardTime(th.LAST_GOOD_PRICE_TIMEOUT + 1, web3.currentProvider);
+
+      await assertRevert(
+        priceFeed.callStatic.fetchPriceWithSource(),
+        "PriceFeed: lastGoodPrice is too old",
+      );
+
+      const [price, source] = await priceFeed.callStatic.fetchPriceWithSourceView();
+
+      assert.equal(price.toString(), dec(200, 18));
+      assert.equal(source.toString(), "2");
+    });
+  });
+
+  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor differs, switch to bothOraclesUntrusted", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -623,10 +680,10 @@ contract("PriceFeed", async () => {
 
     const priceFetchTx = await priceFeed.fetchPrice();
     const statusAfter = await priceFeed.status();
-    assert.equal(statusAfter, "1"); // status 1: using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, "2"); // status 2: both oracles untrusted
   });
 
-  it("C1 chainlinkWorking: Chainlink price drop of >50%, return the Tellor price", async () => {
+  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor differs, return last good price", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -640,7 +697,7 @@ contract("PriceFeed", async () => {
 
     let price = await priceFeed.lastGoodPrice();
 
-    assert.equal(price, dec(203, 16));
+    assert.equal(price, dec(2, 18));
   });
 
   it("C1 chainlinkWorking: Chainlink price drop of 50%, remain chainlinkWorking", async () => {
@@ -706,7 +763,7 @@ contract("PriceFeed", async () => {
   });
 
   // Price increase
-  it("C1 chainlinkWorking: Chainlink price increase of >100%, switch to usingChainlinkTellorUntrusted", async () => {
+  it("C1 chainlinkWorking: Chainlink price increase of >100% and Tellor differs, switch to bothOraclesUntrusted", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -718,10 +775,10 @@ contract("PriceFeed", async () => {
 
     const priceFetchTx = await priceFeed.fetchPrice();
     const statusAfter = await priceFeed.status();
-    assert.equal(statusAfter, "1"); // status 1: using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, "2"); // status 2: both oracles untrusted
   });
 
-  it("C1 chainlinkWorking: Chainlink price increase of >100%, return Tellor price", async () => {
+  it("C1 chainlinkWorking: Chainlink price increase of >100% and Tellor differs, return last good price", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -733,7 +790,7 @@ contract("PriceFeed", async () => {
 
     const priceFetchTx = await priceFeed.fetchPrice();
     let price = await priceFeed.lastGoodPrice();
-    assert.equal(price, dec(203, 16));
+    assert.equal(price, dec(2, 18));
   });
 
   it("C1 chainlinkWorking: Chainlink price increase of 100%, remain chainlinkWorking", async () => {
@@ -856,7 +913,7 @@ contract("PriceFeed", async () => {
     assert.equal(price, dec(100, 18));
   });
 
-  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor live but not within 5% of Chainlink: switch to usingChainlinkTellorUntrusted", async () => {
+  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor live but not within 5% of Chainlink: switch to bothOraclesUntrusted", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -868,10 +925,10 @@ contract("PriceFeed", async () => {
 
     const priceFetchTx = await priceFeed.fetchPrice();
     const statusAfter = await priceFeed.status();
-    assert.equal(statusAfter, "1"); // status 1: using Tellor, Chainlink untrusted
+    assert.equal(statusAfter, "2"); // status 2: both oracles untrusted
   });
 
-  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor live but not within 5% of Chainlink: return Tellor price", async () => {
+  it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor live but not within 5% of Chainlink: return last good price", async () => {
     priceFeed.setLastGoodPrice(dec(2, 18));
 
     const statusBefore = await priceFeed.status();
@@ -884,7 +941,43 @@ contract("PriceFeed", async () => {
     const priceFetchTx = await priceFeed.fetchPrice();
     let price = await priceFeed.lastGoodPrice();
 
-    assert.equal(price, dec(105000001, 12)); // return Tellor price
+    assert.equal(price, dec(1000, 18));
+  });
+
+  it("C1 chainlinkWorking: divergent live oracles do not update lastGoodPriceTimestamp", async () => {
+    await priceFeed.setLastGoodPrice(dec(1000, 18));
+    const timestampBefore = await priceFeed.lastGoodPriceTimestamp();
+
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(105000001, 12));
+
+    await th.fastForwardTime(60, web3.currentProvider);
+    const now = await th.getLatestBlockTimestamp(web3);
+    await mockChainlink.setUpdateTime(now);
+    await mockTellor.setUpdateTime(now);
+
+    await priceFeed.fetchPrice();
+
+    const timestampAfter = await priceFeed.lastGoodPriceTimestamp();
+    assert.equal(timestampAfter.toString(), timestampBefore.toString());
+  });
+
+  it("C1 chainlinkWorking: switches back to chainlinkWorking after divergent live oracles converge", async () => {
+    await priceFeed.setLastGoodPrice(dec(1000, 18));
+    await mockChainlink.setPrice(dec(100, 8));
+    await mockTellor.setPrice(dec(105000001, 12));
+
+    await priceFeed.fetchPrice();
+    assert.equal(await priceFeed.status(), "2");
+
+    await mockTellor.setPrice(dec(100, 18));
+    await th.fastForwardTime(1, web3.currentProvider);
+    const now = await th.getLatestBlockTimestamp(web3);
+    await mockTellor.setUpdateTime(now);
+    await priceFeed.fetchPrice();
+
+    assert.equal(await priceFeed.status(), "0");
+    assert.equal(await priceFeed.lastGoodPrice(), dec(100, 18));
   });
 
   it("C1 chainlinkWorking: Chainlink price drop of >50% and Tellor frozen: switch to usingChainlinkTellorUntrusted", async () => {
