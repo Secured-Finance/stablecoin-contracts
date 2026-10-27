@@ -3,6 +3,7 @@
 pragma solidity 0.7.6;
 
 import "../Dependencies/OpenZeppelin/access/OwnableUpgradeable.sol";
+import "../Dependencies/OpenZeppelin/cryptography/ECDSA.sol";
 import "../Dependencies/OpenZeppelin/math/SafeMath.sol";
 import "../Dependencies/CheckContract.sol";
 import "../Interfaces/IProtocolToken.sol";
@@ -190,7 +191,7 @@ contract ProtocolToken is OwnableUpgradeable, CheckContract, IProtocolToken {
                 )
             )
         );
-        address recoveredAddress = ecrecover(digest, _v, _r, _s);
+        address recoveredAddress = ECDSA.recover(digest, _v, _r, _s);
         require(recoveredAddress == _owner, "ProtocolToken: invalid signature");
         _approve(_owner, _spender, _amount);
     }
