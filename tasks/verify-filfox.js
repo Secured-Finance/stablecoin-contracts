@@ -9,14 +9,62 @@ const API_URLS = {
   testnet: "https://calibration.filfox.info/api/v1/tools/verifyContract",
 };
 
+const stringifyCompilerSetting = (value) => {
+  if (value === undefined) {
+    return "";
+  }
+
+  return typeof value === "string" ? value : JSON.stringify(value);
+};
+
+const getSourceFiles = (buildInfo, sourceName) => {
+  const sourceNames = new Set();
+  let hasMissingAst = false;
+
+  const addSourceAndImports = (currentSourceName) => {
+    if (sourceNames.has(currentSourceName)) {
+      return;
+    }
+
+    if (!buildInfo.input.sources[currentSourceName]) {
+      throw new Error(`Source not found in build info: ${currentSourceName}`);
+    }
+
+    sourceNames.add(currentSourceName);
+
+    const ast = buildInfo.output.sources[currentSourceName]?.ast;
+    if (!ast) {
+      hasMissingAst = true;
+      return;
+    }
+
+    for (const node of ast.nodes) {
+      if (node.nodeType === "ImportDirective") {
+        addSourceAndImports(node.absolutePath);
+      }
+    }
+  };
+
+  addSourceAndImports(sourceName);
+
+  // Without every AST, the complete import graph cannot be determined safely.
+  // In that case, preserve the exact compiler input by submitting every source.
+  const selectedSources = hasMissingAst
+    ? Object.entries(buildInfo.input.sources)
+    : [...sourceNames].map((name) => [name, buildInfo.input.sources[name]]);
+
+  return Object.fromEntries(
+    selectedSources.map(([name, source]) => [name, { content: source.content }]),
+  );
+};
+
 const verifyContract = async (
   network,
   name,
   contractAddress,
-  optimizeRuns,
-  compiler,
-  sourceFiles,
+  { compiler, sourceFiles, compilerSettings = {} },
 ) => {
+  const optimizer = compilerSettings.optimizer ?? { enabled: true };
   const opts = {
     headers: { "Content-Type": "application/json" },
   };
@@ -25,13 +73,14 @@ const verifyContract = async (
     address: contractAddress,
     language: "Solidity",
     compiler,
-    optimize: true,
-    optimizeRuns,
-    optimizerDetails: "",
+    optimize: optimizer.enabled ?? false,
+    optimizeRuns: optimizer.runs,
+    optimizerDetails: stringifyCompilerSetting(optimizer.details),
     sourceFiles,
-    evmVersion: "default",
-    viaIR: false,
-    libraries: "",
+    evmVersion: compilerSettings.evmVersion ?? "default",
+    viaIR: compilerSettings.viaIR ?? false,
+    libraries: stringifyCompilerSetting(compilerSettings.libraries),
+    metadata: stringifyCompilerSetting(compilerSettings.metadata),
   };
 
   const res = await axios.post(API_URLS[network], body, opts);
@@ -42,14 +91,16 @@ const verifyContract = async (
     if (res.data.errorCode === 6) {
       console.log("Contract already verified:", name);
     } else {
-      console.log("res:", res);
-      throw new Error("Contract verification failed");
+      console.log("res:", res.data);
+      throw new Error(
+        `Contract verification failed: ${name} (Filfox errorCode ${res.data.errorCode})`,
+      );
     }
   }
 };
 
 task("verify-filfox", "Verify and register contracts on Filfox").setAction(
-  async (_, { run, ethers, network, upgrades }) => {
+  async (_, { run, artifacts, ethers, network, upgrades }) => {
     const networkName = network.name === "localhost" ? "testnet" : network.name;
     const configParams = require(`../deployments/inputs/${networkName}.js`);
     const deployer = (await ethers.getSigners())[0];
@@ -96,26 +147,33 @@ task("verify-filfox", "Verify and register contracts on Filfox").setAction(
           "utf8",
         );
 
-        await verifyContract(
-          networkName,
-          `${fileName} (Proxy)`,
-          proxyContractAddress,
-          undefined,
-          "v0.8.9+commit.e5eed63a",
-          {
+        await verifyContract(networkName, `${fileName} (Proxy)`, proxyContractAddress, {
+          compiler: "v0.8.9+commit.e5eed63a",
+          sourceFiles: {
             ["TransparentUpgradeableProxy.sol"]: { content },
           },
-        );
+          compilerSettings: {
+            optimizer: { enabled: true },
+          },
+        });
+      }
+
+      const sourceName = `contracts/${filePath}`;
+      const fullyQualifiedName = `${sourceName}:${fileName}`;
+      const buildInfo = await artifacts.getBuildInfo(fullyQualifiedName);
+
+      if (!buildInfo) {
+        throw new Error(`Build info not found for ${fullyQualifiedName}`);
       }
 
       await verifyContract(
         networkName,
         isUpgradeable ? `${fileName} (Implementation)` : fileName,
         contractAddress,
-        100,
-        "v0.7.6+commit.7338295f",
         {
-          [`${fileName}.sol`]: { content },
+          compiler: `v${buildInfo.solcLongVersion}`,
+          sourceFiles: getSourceFiles(buildInfo, sourceName),
+          compilerSettings: buildInfo.input.settings,
         },
       );
     }
