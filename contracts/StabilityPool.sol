@@ -401,7 +401,12 @@ contract StabilityPool is
 
         // Update front end stake
         uint compoundedFrontEndStake = getCompoundedFrontEndStake(frontEnd);
-        uint newFrontEndStake = compoundedFrontEndStake.sub(debtTokenToWithdraw);
+        // Independent compounding can leave the aggregate stake below the depositor by rounding dust.
+        uint frontEndStakeToWithdraw = ProtocolMath._min(
+            debtTokenToWithdraw,
+            compoundedFrontEndStake
+        );
+        uint newFrontEndStake = compoundedFrontEndStake.sub(frontEndStakeToWithdraw);
         _updateFrontEndStakeAndSnapshots(frontEnd, newFrontEndStake);
         emit FrontEndStakeChanged(frontEnd, newFrontEndStake, msg.sender);
 
