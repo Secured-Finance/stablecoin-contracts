@@ -15,8 +15,18 @@ interface IPriceFeed {
         usingChainlinkTellorUntrusted
     }
 
+    enum PriceSource {
+        primaryOracle,
+        fallbackOracle,
+        lastGoodPrice
+    }
+
     // --- Function ---
     function fetchPrice() external returns (uint);
 
+    function fetchPriceWithSource() external returns (uint, PriceSource);
+
     function fetchPriceView() external returns (uint);
+
+    function fetchPriceWithSourceView() external returns (uint, PriceSource);
 }

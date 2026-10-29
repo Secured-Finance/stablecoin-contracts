@@ -10,6 +10,7 @@ import "../Interfaces/IPriceFeed.sol";
  */
 contract PriceFeedTestnet is IPriceFeed {
     uint256 private _price = 200 * 1e18;
+    PriceSource private _priceSource = PriceSource.primaryOracle;
 
     // --- Functions ---
 
@@ -22,8 +23,20 @@ contract PriceFeedTestnet is IPriceFeed {
         return _fetchPrice();
     }
 
+    function fetchPriceWithSource() external override returns (uint256 price, PriceSource source) {
+        return (_fetchPrice(), _priceSource);
+    }
+
     function fetchPriceView() external override returns (uint256) {
         return _fetchPrice();
+    }
+
+    function fetchPriceWithSourceView()
+        external
+        override
+        returns (uint256 price, PriceSource source)
+    {
+        return (_fetchPrice(), _priceSource);
     }
 
     function _fetchPrice() internal returns (uint256) {
@@ -37,5 +50,9 @@ contract PriceFeedTestnet is IPriceFeed {
     function setPrice(uint256 price) external returns (bool) {
         _price = price;
         return true;
+    }
+
+    function setPriceSource(PriceSource priceSource) external {
+        _priceSource = priceSource;
     }
 }
