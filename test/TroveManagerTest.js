@@ -5911,6 +5911,60 @@ contract("TroveManager", async () => {
   it("hasPendingRewards(): Returns false it trove is not active", async () => {
     assert.isFalse(await troveManager.hasPendingRewards(alice.address));
   });
+
+  it("hasPendingRewards(): detects and applies a debt-only redistribution reward", async () => {
+    await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } });
+    await openTrove({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } });
+
+    const totalStakes = await troveManager.totalStakes();
+    const aliceStake = (await troveManager.Troves(alice.address)).stake;
+    const aliceDebtBefore = await troveManager.getTroveDebt(alice.address);
+
+    // One wei of collateral is too small to increment L_FIL, while this debt amount
+    // is the minimum required to increment L_Debt by at least one unit.
+    const redistributedColl = toBN("1");
+    const redistributedDebt = totalStakes.add(mv._1e18BN.sub(toBN("1"))).div(mv._1e18BN);
+
+    await troveManager.unprotectedRedistributeDebtAndColl(redistributedDebt, redistributedColl);
+
+    const L_FIL = await troveManager.L_FIL();
+    const L_Debt = await troveManager.L_Debt();
+    const pendingDebt = aliceStake.mul(L_Debt).div(mv._1e18BN);
+
+    assert.equal(L_FIL.toString(), "0");
+    assert.isTrue(L_Debt.gt(toBN("0")));
+    assert.isTrue(pendingDebt.gt(toBN("0")));
+    assert.equal((await troveManager.getPendingFILReward(alice.address)).toString(), "0");
+    assert.equal(
+      (await troveManager.getPendingDebtReward(alice.address)).toString(),
+      pendingDebt.toString(),
+    );
+    assert.isTrue(await troveManager.hasPendingRewards(alice.address));
+
+    const activePoolDebtBeforeApplying = await activePool.getDebt();
+    const defaultPoolDebtBeforeApplying = await defaultPool.getDebt();
+
+    await borrowerOperations
+      .connect(alice)
+      .addColl(alice.address, alice.address, { value: dec(1, 18) });
+
+    const aliceSnapshots = await troveManager.rewardSnapshots(alice.address);
+    assert.equal(
+      (await troveManager.getTroveDebt(alice.address)).toString(),
+      aliceDebtBefore.add(pendingDebt).toString(),
+    );
+    assert.equal(
+      (await activePool.getDebt()).toString(),
+      activePoolDebtBeforeApplying.add(pendingDebt).toString(),
+    );
+    assert.equal(
+      (await defaultPool.getDebt()).toString(),
+      defaultPoolDebtBeforeApplying.sub(pendingDebt).toString(),
+    );
+    assert.equal(aliceSnapshots.FIL.toString(), L_FIL.toString());
+    assert.equal(aliceSnapshots.debt.toString(), L_Debt.toString());
+    assert.isFalse(await troveManager.hasPendingRewards(alice.address));
+  });
 });
 
 contract("Reset chain state", async () => {});
