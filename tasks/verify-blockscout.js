@@ -129,10 +129,10 @@ const getInitializationData = async (fileName, configParams, deploymentState) =>
     Unipool: [],
   };
 
-  const initArgs = initArgsMap[fileName] || [];
-  if (initArgs.length === 0) {
+  if (!Object.prototype.hasOwnProperty.call(initArgsMap, fileName)) {
     return "0x";
   }
+  const initArgs = initArgsMap[fileName];
 
   // Get the contract factory to encode the initialize function call
   const contractFactory = await ethers.getContractFactory(fileName);
