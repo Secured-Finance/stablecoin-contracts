@@ -6,7 +6,7 @@ const { keccak256 } = require("@ethersproject/keccak256");
 const { defaultAbiCoder } = require("@ethersproject/abi");
 const { toUtf8Bytes } = require("@ethersproject/strings");
 const { pack } = require("@ethersproject/solidity");
-const { hexlify } = require("@ethersproject/bytes");
+const { hexlify, hexZeroPad } = require("@ethersproject/bytes");
 const { ecsign } = require("ethereumjs-util");
 
 const th = testHelpers.TestHelper;
@@ -40,6 +40,8 @@ contract("ProtocolToken", async () => {
       "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)",
     ),
   );
+  const SECP256K1_N = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
+  const SECP256K1_HALF_N = "0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0";
 
   // Gets the EIP712 domain separator
   const getDomainSeparator = (name, contractAddress, chainId, version) => {
@@ -100,7 +102,7 @@ contract("ProtocolToken", async () => {
     await protocolTokenTester.unprotectedMint(C.address, dec(50, 18));
   };
 
-  const buildPermitTx = async (deadline) => {
+  const buildPermitSignature = async (deadline) => {
     const nonce = (await protocolTokenTester.nonces(approve.owner.address)).toString();
 
     // Get the EIP712 digest
@@ -117,6 +119,12 @@ contract("ProtocolToken", async () => {
     );
 
     const { v, r, s } = sign(digest, ownerPrivateKey);
+
+    return { v, r, s };
+  };
+
+  const buildPermitTx = async (deadline) => {
+    const { v, r, s } = await buildPermitSignature(deadline);
 
     const tx = protocolTokenTester.permit(
       approve.owner.address,
@@ -421,11 +429,56 @@ contract("ProtocolToken", async () => {
         approve.spender.address,
         approve.value,
         deadline,
-        "0x99",
+        v,
         r,
         s,
       ),
       "ProtocolToken: invalid signature",
+    );
+  });
+
+  it("permit(): rejects malleable high-s signatures", async () => {
+    const deadline = 100000000000000;
+    const nonceBefore = await protocolTokenTester.nonces(approve.owner.address);
+    const allowanceBefore = await protocolTokenTester.allowance(
+      approve.owner.address,
+      approve.spender.address,
+    );
+    const { v, r, s } = await buildPermitSignature(deadline);
+    const lowS = ethers.BigNumber.from(hexlify(s));
+    const highS = ethers.BigNumber.from(SECP256K1_N).sub(lowS);
+    const highV = v === 27 ? 28 : 27;
+
+    assert.isTrue(lowS.lte(ethers.BigNumber.from(SECP256K1_HALF_N)));
+    assert.isTrue(highS.gt(ethers.BigNumber.from(SECP256K1_HALF_N)));
+
+    let reverted = false;
+    try {
+      const tx = await protocolTokenTester.permit(
+        approve.owner.address,
+        approve.spender.address,
+        approve.value,
+        deadline,
+        highV,
+        hexlify(r),
+        hexZeroPad(highS.toHexString(), 32),
+      );
+      await tx.wait();
+    } catch (error) {
+      reverted = true;
+      assert.include(error.message, "ECDSA: invalid signature 's' value");
+    }
+
+    assert.isTrue(reverted, "Expected the high-s signature to be rejected");
+    assert.equal(
+      (await protocolTokenTester.nonces(approve.owner.address)).toString(),
+      nonceBefore.toString(),
+    );
+    assert.equal(
+      (
+        await protocolTokenTester.allowance(approve.owner.address, approve.spender.address)
+      ).toString(),
+      allowanceBefore.toString(),
     );
   });
 
@@ -439,7 +492,7 @@ contract("ProtocolToken", async () => {
   it("permit(): fails with the wrong signature", async () => {
     const deadline = 100000000000000;
 
-    const { v, r, s } = await buildPermitTx(deadline);
+    const { v, r, s } = await buildPermitSignature(deadline);
 
     const tx = protocolTokenTester.permit(
       C.address,
