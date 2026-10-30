@@ -19,7 +19,8 @@
       "0x7d3a07ede34ed006fced285e1faeddf70d41668622935539e3ed139bc52413df",
       "0x7d390fdb521109a2c0607ee55ec529bed1820c25543ffcd8ddd3b90056fd9464",
       "0xc70f8259370e678f15394585716915cfa8463af6d97f6444c7c6e4bdc4fc4562",
-      "0x4a018405bbf54c2eb9049735760ce2d401e527d917b401ac68a6814f2256158e"
+      "0x4a018405bbf54c2eb9049735760ce2d401e527d917b401ac68a6814f2256158e",
+      "0x0b7c7c6a3d8da03ea8b07b7641e98527e0e6af407b80beb0dd8cdabf6a2d929e"
     ]
   },
   "sortedTroves": {
@@ -32,7 +33,8 @@
   "troveManager": {
     "address": "0x5aB87c2398454125Dd424425e39c8909bBE16022",
     "txHashes": [
-      "0xa4c64ec3a5be9c88957ef2148be36a8da573fd5181d4ebce570d51a50c01ab59"
+      "0xa4c64ec3a5be9c88957ef2148be36a8da573fd5181d4ebce570d51a50c01ab59",
+      "0xa4e07c0895a9b8e4e691466979204d991aa706f69a3016285da18be14edbfdf3"
     ]
   },
   "activePool": {
@@ -45,7 +47,8 @@
   "stabilityPool": {
     "address": "0x791Ad78bBc58324089D3E0A8689E7D045B9592b5",
     "txHashes": [
-      "0x466115eb0a28be7900ba6bf67ae3eb320e12eba44d5e19bc68965801013aa5a4"
+      "0x466115eb0a28be7900ba6bf67ae3eb320e12eba44d5e19bc68965801013aa5a4",
+      "0x98ed7f8fc37e2b1d5b45ebad1207d5cf76306f8a03ea0c4d24004c7a3b72a191"
     ]
   },
   "gasPool": {
@@ -71,7 +74,8 @@
     "txHashes": [
       "0xf3660246184a109c48ae8ebb28444cf2a751bf8d618a8a0b0e629a150aa7c341",
       "0x9aaad93c66dafa0023ee6bbbeaf8fcc6572b0fc54cba3c48ff3194f6b8674061",
-      "0x5e57cc9910bb42cb1bc482bdb574e624ced25696135e6c7a7b0baf398397e228"
+      "0x5e57cc9910bb42cb1bc482bdb574e624ced25696135e6c7a7b0baf398397e228",
+      "0x0f92e82b91503f0488521ea06f9c66b0caca8e96eef84e448d280a66a39e819b"
     ]
   },
   "hintHelpers": {
@@ -116,7 +120,8 @@
   "protocolToken": {
     "address": "0x1ca9149985240440e426f827002B47031EbaA85f",
     "txHashes": [
-      "0x35ca301d3114a3571c013dbcc0bc76b5e8e98cc5901116adfd2a08a3d529a269"
+      "0x35ca301d3114a3571c013dbcc0bc76b5e8e98cc5901116adfd2a08a3d529a269",
+      "0xd7b8c371e1a3bde7dad27f96d202bb37a682a9136f1c1eef578ba06addcfa89e"
     ]
   },
   "multiTroveGetter": {
