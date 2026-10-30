@@ -106,7 +106,8 @@
   "lockupContractFactory": {
     "address": "0x93B778aD4501E06DABfd2a5E8942B9311A168f37",
     "txHashes": [
-      "0x8b2a5259e0de3d1b21165701fd80622c30e72e4ed1e768f4e3e75d9f8956b4a5"
+      "0x8b2a5259e0de3d1b21165701fd80622c30e72e4ed1e768f4e3e75d9f8956b4a5",
+      "0x50861f934a70c2b0401b6c71b1ad71fb44a68e0fb3d30c61f5a926f32e0a2a21"
     ]
   },
   "communityIssuance": {
