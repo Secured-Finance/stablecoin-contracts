@@ -19,6 +19,8 @@ const getConstructorArgs = async (fileName, configParams, deploymentState) => {
     LAST_GOOD_PRICE_TIMEOUT,
   } = configParams;
   const constructorBaseArgs = [GAS_COMPENSATION, MIN_NET_DEBT];
+  const envBootstrapPeriod = parseInt(process.env.TROVE_MANAGER_BOOTSTRAP_PERIOD, 10);
+  const bootstrapPeriod = Number.isNaN(envBootstrapPeriod) ? BOOTSTRAP_PERIOD : envBootstrapPeriod;
 
   // Get contract addresses from deployment state
   const getAddr = (contractName) => deploymentState[contractName]?.address || "";
@@ -30,7 +32,7 @@ const getConstructorArgs = async (fileName, configParams, deploymentState) => {
 
     // Upgradeable contracts with constructor args (passed to implementation contract)
     PriceFeed: [ORACLE_TIMEOUT, LAST_GOOD_PRICE_TIMEOUT],
-    TroveManager: [...constructorBaseArgs, BOOTSTRAP_PERIOD],
+    TroveManager: [...constructorBaseArgs, bootstrapPeriod],
     StabilityPool: constructorBaseArgs,
     HintHelpers: constructorBaseArgs,
     BorrowerOperations: constructorBaseArgs,
