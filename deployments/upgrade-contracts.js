@@ -14,6 +14,10 @@ async function main(configParams) {
   const deploymentState = mdh.loadPreviousDeployment();
   const contractNames = process.env.UPGRADE_CONTRACTS?.split(",") ?? [];
   const constructorBaseArgs = [configParams.GAS_COMPENSATION, configParams.MIN_NET_DEBT];
+  const envBootstrapPeriod = parseInt(process.env.TROVE_MANAGER_BOOTSTRAP_PERIOD, 10);
+  const bootstrapPeriod = Number.isNaN(envBootstrapPeriod)
+    ? configParams.BOOTSTRAP_PERIOD
+    : envBootstrapPeriod;
   const multisig = configParams.walletAddrs.MULTISIG;
 
   if (contractNames.length === 0) {
@@ -22,11 +26,15 @@ async function main(configParams) {
 
   const constructorArgsObj = {
     PriceFeed: [configParams.ORACLE_TIMEOUT, configParams.LAST_GOOD_PRICE_TIMEOUT],
-    TroveManager: [...constructorBaseArgs, configParams.BOOTSTRAP_PERIOD],
+    TroveManager: [...constructorBaseArgs, bootstrapPeriod],
     StabilityPool: constructorBaseArgs,
     BorrowerOperations: constructorBaseArgs,
     HintHelpers: constructorBaseArgs,
   };
+
+  if (contractNames.includes("TroveManager")) {
+    console.log(`TroveManager BOOTSTRAP_PERIOD: ${bootstrapPeriod} seconds`);
+  }
 
   const adapter = new EthersAdapter({
     ethers: ethers,
