@@ -50,7 +50,7 @@ jobs:
       - name: Upgrade Contracts
         env:
           UPGRADE_CONTRACTS: ${{ github.event.inputs.upgrade_contracts }}
-          TROVE_MANAGER_BOOTSTRAP_PERIOD: ${{ vars.TROVE_MANAGER_BOOTSTRAP_PERIOD }}
+          BOOTSTRAP_PERIOD: ${{ vars.BOOTSTRAP_PERIOD }}
         run: |
           npx hardhat run --network ${{ github.event.inputs.network }} deployments/upgrade-contracts.js
           git add .

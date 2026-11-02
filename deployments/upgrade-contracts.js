@@ -14,7 +14,7 @@ async function main(configParams) {
   const deploymentState = mdh.loadPreviousDeployment();
   const contractNames = process.env.UPGRADE_CONTRACTS?.split(",") ?? [];
   const constructorBaseArgs = [configParams.GAS_COMPENSATION, configParams.MIN_NET_DEBT];
-  const envBootstrapPeriod = parseInt(process.env.TROVE_MANAGER_BOOTSTRAP_PERIOD, 10);
+  const envBootstrapPeriod = parseInt(process.env.BOOTSTRAP_PERIOD, 10);
   const bootstrapPeriod = Number.isNaN(envBootstrapPeriod)
     ? configParams.BOOTSTRAP_PERIOD
     : envBootstrapPeriod;

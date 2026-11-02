@@ -48,13 +48,13 @@ $ npx hardhat run --network mainnet deployments/change-owners.js
 $ UPGRADE_CONTRACTS=SortedTroves,TroveManager npx hardhat run --network mainnet deployments/upgrade-contracts.js
 
 # Upgrade TroveManager with a custom bootstrap period (in seconds)
-$ TROVE_MANAGER_BOOTSTRAP_PERIOD=0 UPGRADE_CONTRACTS=TroveManager npx hardhat run --network mainnet deployments/upgrade-contracts.js
+$ BOOTSTRAP_PERIOD=0 UPGRADE_CONTRACTS=TroveManager npx hardhat run --network mainnet deployments/upgrade-contracts.js
 
 # Verify contracts on Filfox
 $ npx hardhat verify-filfox --network mainnet
 
 # Verify contracts on Blockscout with the constructor arguments used for TroveManager
-$ TROVE_MANAGER_BOOTSTRAP_PERIOD=0 npx hardhat verify-blockscout --network mainnet
+$ BOOTSTRAP_PERIOD=0 npx hardhat verify-blockscout --network mainnet
 
 # Verify contracts on Starboard
 $ npx hardhat verify-starboard --network mainnet

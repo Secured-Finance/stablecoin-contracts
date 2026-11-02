@@ -19,7 +19,7 @@ const getConstructorArgs = async (fileName, configParams, deploymentState) => {
     LAST_GOOD_PRICE_TIMEOUT,
   } = configParams;
   const constructorBaseArgs = [GAS_COMPENSATION, MIN_NET_DEBT];
-  const envBootstrapPeriod = parseInt(process.env.TROVE_MANAGER_BOOTSTRAP_PERIOD, 10);
+  const envBootstrapPeriod = parseInt(process.env.BOOTSTRAP_PERIOD, 10);
   const bootstrapPeriod = Number.isNaN(envBootstrapPeriod) ? BOOTSTRAP_PERIOD : envBootstrapPeriod;
 
   // Get contract addresses from deployment state
